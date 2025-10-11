@@ -9,7 +9,6 @@ He thong xac thuc hoan chinh voi:
 - ✅ Quan ly phien (Session)
 - ✅ Phan quyen theo vai tro (Admin/Teacher/Student)
 - ✅ Middleware tu dong kiem tra
-- ✅ 20 tests PASS
 
 ---
 
