@@ -1,4 +1,185 @@
-# TEST API VOI POSTMAN
+# TOM TAT HE THONG XAC THUC
+
+## Tong Quan
+
+
+### 1. Xac Thuc (Authentication)
+- ✅ Dang nhap (Login)
+- ✅ Dang xuat (Logout)
+- ✅ Doi mat khau (Change Password)
+- ✅ Dat lai mat khau (Password Reset)
+- ✅ Kiem tra phien (Session Check)
+
+### 2. Phan Quyen (Authorization)
+- ✅ Phan quyen dua tren vai tro (Role-based Permissions)
+- ✅ 3 vai tro: Admin, Teacher, Student
+- ✅ Decorators: @require_role, @require_permission
+- ✅ Kiem tra trang thai user (active/inactive)
+
+### 3. Quan Ly Phien (Session Management)
+- ✅ Tao phien tu dong khi dang nhap
+- ✅ Phien het han sau 1 gio
+- ✅ Xoa phien khi dang xuat
+- ✅ Bao mat phien voi HTTPOnly, SameSite
+
+### 4. Dat Lai Mat Khau (Password Reset)
+- ✅ Tao token reset (het han 24h)
+- ✅ Xac thuc token
+- ✅ Token chi dung 1 lan
+- ✅ Dat mat khau moi
+
+## Cau Truc File
+
+```
+core/
+├── authentication.py      # AuthenticationService - xu ly xac thuc
+├── permissions.py         # RolePermission - quan ly phan quyen
+├── views.py              # API endpoints
+├── urls.py               # URL routing
+├── models.py             # User, PasswordResetToken
+├── tests.py              # 20 test cases
+└── admin.py              # Django admin interface
+```
+
+## API Endpoints
+
+| Method | Endpoint | Chuc nang | Auth Required |
+|--------|----------|-----------|---------------|
+| POST | /api/auth/login/ | Dang nhap | No |
+| POST | /api/auth/logout/ | Dang xuat | Yes |
+| POST | /api/auth/change-password/ | Doi mat khau | Yes |
+| POST | /api/auth/request-reset/ | Yeu cau reset | No |
+| POST | /api/auth/reset-password/ | Dat lai mat khau | No |
+| GET | /api/auth/check-session/ | Kiem tra phien | Yes |
+| GET | /api/admin/dashboard/ | Dashboard admin | Yes (Admin) |
+| GET | /api/teacher/dashboard/ | Dashboard teacher | Yes (Teacher) |
+| GET | /api/student/dashboard/ | Dashboard student | Yes (Student) |
+| GET | /api/admin/manage-users/ | Quan ly users | Yes (manage_users) |
+
+## Phan Quyen Chi Tiet
+
+### Admin (8 quyen)
+- manage_users
+- manage_departments
+- manage_subjects
+- generate_reports
+- backup_system
+- configure_system
+- approve_documents
+- manage_tuition
+
+### Teacher (5 quyen)
+- view_assigned_classes
+- input_grades
+- export_grades
+- take_attendance
+- view_students
+
+### Student (6 quyen)
+- view_grades
+- register_course
+- drop_course
+- view_schedule
+- request_document
+- view_tuition
+
+## Ket Qua Test
+
+### Test Suite: 20/20 PASSED ✅
+
+#### AuthenticationTestCase (10 tests)
+- ✅ test_login_success
+- ✅ test_login_invalid_credentials
+- ✅ test_logout
+- ✅ test_change_password_success
+- ✅ test_change_password_wrong_old_password
+- ✅ test_request_password_reset
+- ✅ test_reset_password_with_valid_token
+- ✅ test_reset_password_with_invalid_token
+- ✅ test_check_session_authenticated
+- ✅ test_check_session_unauthenticated
+
+#### RolePermissionTestCase (7 tests)
+- ✅ test_admin_access_admin_dashboard
+- ✅ test_teacher_access_admin_dashboard
+- ✅ test_student_access_student_dashboard
+- ✅ test_admin_has_manage_users_permission
+- ✅ test_student_no_manage_users_permission
+- ✅ test_teacher_has_input_grades_permission
+- ✅ test_inactive_user_no_permission
+
+#### SessionManagementTestCase (3 tests)
+- ✅ test_session_creation
+- ✅ test_session_validation
+- ✅ test_session_expiry
+
+## Cach Su Dung
+
+### 1. Chay Migration
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### 2. Tao Superuser
+```bash
+python manage.py createsuperuser
+```
+
+### 3. Chay Server
+```bash
+python manage.py runserver
+```
+
+### 4. Chay Tests
+```bash
+# Tat ca tests
+python manage.py test core
+
+# Test cu the
+python manage.py test core.tests.AuthenticationTestCase
+
+# Test flow
+python test_authentication_flow.py
+```
+
+## Models
+
+### User (extends AbstractUser)
+- username, password, email (tu AbstractUser)
+- full_name, phone
+- user_type: admin/teacher/student
+- status: active/inactive/suspended/graduated
+- last_login, created_at, updated_at
+
+### PasswordResetToken
+- token (primary key)
+- user (ForeignKey)
+- created_at, expires_at
+- is_used (boolean)
+
+## Cau Hinh (settings.py)
+
+```python
+AUTH_USER_MODEL = 'core.User'
+LOGIN_URL = '/api/auth/login/'
+
+SESSION_COOKIE_AGE = 3600  # 1 gio
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # True khi dung HTTPS
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+PASSWORD_RESET_TIMEOUT = 86400  # 24 gio
+```
+
+
+
+
+
+
+## TEST API VOI POSTMAN
 
 ## BUOC 1: TAO USER TEST
 
