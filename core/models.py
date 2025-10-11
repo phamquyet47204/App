@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 
 # Create your models here.
 class User(AbstractUser):
-    full_name = models.CharField(max_length=100)
+    full_name = models.CharField(max_length=100, default='')
     phone = models.CharField(max_length=15, blank=True, null=True)
     
     USER_TYPE = [
