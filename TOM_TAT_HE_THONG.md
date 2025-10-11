@@ -9,7 +9,6 @@ He thong xac thuc hoan chinh voi:
 - ✅ Quan ly phien (Session)
 - ✅ Phan quyen theo vai tro (Admin/Teacher/Student)
 - ✅ Middleware tu dong kiem tra
-- ✅ 20 tests PASS
 
 ---
 
@@ -306,14 +305,7 @@ user = User.objects.create_user(...)
 Student.objects.create(user=user, ...)
 ```
 
-### Middleware vs Decorators
-- **Middleware**: Kiem tra CHUNG theo PATH
-- **Decorators**: Kiem tra CHI TIET theo PERMISSION
-
-→ Dung CA HAI de bao mat 2 lop
-
 ---
-
 ## CHECKLIST
 
 - [x] Models: User, PasswordResetToken
