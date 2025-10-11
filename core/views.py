@@ -48,6 +48,7 @@ def logout_view(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def change_password_view(request):
     """API doi mat khau - Middleware kiem tra auth"""
