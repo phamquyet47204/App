@@ -305,14 +305,7 @@ user = User.objects.create_user(...)
 Student.objects.create(user=user, ...)
 ```
 
-### Middleware vs Decorators
-- **Middleware**: Kiem tra CHUNG theo PATH
-- **Decorators**: Kiem tra CHI TIET theo PERMISSION
-
-→ Dung CA HAI de bao mat 2 lop
-
 ---
-
 ## CHECKLIST
 
 - [x] Models: User, PasswordResetToken
