@@ -8,6 +8,9 @@ class AuthenticationMiddleware(MiddlewareMixin):
     
     EXEMPT_PATHS = [
         '/api/auth/login/',
+        '/api/auth/admin/login/',
+        '/api/auth/teacher/login/',
+        '/api/auth/student/login/',
         '/api/auth/logout/',
         '/api/auth/request-reset/',
         '/api/auth/reset-password/',

@@ -65,6 +65,54 @@ class AuthenticationTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
+    def test_admin_login_success(self):
+        """Test admin login thành công"""
+        response = self.client.post(
+            reverse('core:admin_login'),
+            data=json.dumps({
+                'username': 'admin_test',
+                'password': 'admin123'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_login_wrong_user_type(self):
+        """Test teacher không thể dùng admin login"""
+        response = self.client.post(
+            reverse('core:admin_login'),
+            data=json.dumps({
+                'username': 'teacher_test',
+                'password': 'teacher123'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_teacher_login_success(self):
+        """Test teacher login thành công"""
+        response = self.client.post(
+            reverse('core:teacher_login'),
+            data=json.dumps({
+                'username': 'teacher_test',
+                'password': 'teacher123'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_student_login_success(self):
+        """Test student login thành công"""
+        response = self.client.post(
+            reverse('core:student_login'),
+            data=json.dumps({
+                'username': 'student_test',
+                'password': 'student123'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+
     def test_logout(self):
         """Test đăng xuất"""
         self.client.login(username='admin_test', password='admin123')

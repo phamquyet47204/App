@@ -6,6 +6,9 @@ app_name = 'core'
 urlpatterns = [
     # Authentication endpoints
     path('auth/login/', views.login_view, name='login'),
+    path('auth/admin/login/', views.admin_login, name='admin_login'),
+    path('auth/teacher/login/', views.teacher_login, name='teacher_login'),
+    path('auth/student/login/', views.student_login, name='student_login'),
     path('auth/logout/', views.logout_view, name='logout'),
     path('auth/change-password/', views.change_password_view, name='change_password'),
     path('auth/request-reset/', views.request_password_reset, name='request_reset'),

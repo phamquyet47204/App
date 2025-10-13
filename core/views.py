@@ -11,7 +11,7 @@ from .permissions import require_permission
 @csrf_exempt
 @require_http_methods(["POST"])
 def login_view(request):
-    """API dang nhap"""
+    """API dang nhap chung"""
     try:
         data = json.loads(request.body)
         username = data.get('username')
@@ -34,6 +34,105 @@ def login_view(request):
                 }
             })
         return JsonResponse({'error': 'Invalid credentials'}, status=401)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_login(request):
+    """API dang nhap danh cho Admin"""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return JsonResponse({'error': 'Username and password required'}, status=400)
+        
+        user = AuthenticationService.authenticate_user(username, password)
+        if not user:
+            return JsonResponse({'error': 'Invalid credentials'}, status=401)
+        
+        if user.user_type != 'admin':
+            return JsonResponse({'error': 'Access denied. Admin only'}, status=403)
+        
+        session_key = AuthenticationService.create_session(request, user)
+        return JsonResponse({
+            'message': 'Admin login successful',
+            'session_key': session_key,
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.full_name,
+                'user_type': user.user_type
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def teacher_login(request):
+    """API dang nhap danh cho Teacher"""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return JsonResponse({'error': 'Username and password required'}, status=400)
+        
+        user = AuthenticationService.authenticate_user(username, password)
+        if not user:
+            return JsonResponse({'error': 'Invalid credentials'}, status=401)
+        
+        if user.user_type != 'teacher':
+            return JsonResponse({'error': 'Access denied. Teacher only'}, status=403)
+        
+        session_key = AuthenticationService.create_session(request, user)
+        return JsonResponse({
+            'message': 'Teacher login successful',
+            'session_key': session_key,
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.full_name,
+                'user_type': user.user_type
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def student_login(request):
+    """API dang nhap danh cho Student"""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return JsonResponse({'error': 'Username and password required'}, status=400)
+        
+        user = AuthenticationService.authenticate_user(username, password)
+        if not user:
+            return JsonResponse({'error': 'Invalid credentials'}, status=401)
+        
+        if user.user_type != 'student':
+            return JsonResponse({'error': 'Access denied. Student only'}, status=403)
+        
+        session_key = AuthenticationService.create_session(request, user)
+        return JsonResponse({
+            'message': 'Student login successful',
+            'session_key': session_key,
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.full_name,
+                'user_type': user.user_type
+            }
+        })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
