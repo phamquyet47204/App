@@ -1,112 +1,262 @@
-# Tính Năng MỚI NHẤT của SQL Server 2022 (Chỉ các tính năng mới)
+# API VÀ PAYLOAD CHO CHỨC NĂNG STUDENT
 
-## 🔐 1. Ledger Tables - Tính năng hoàn toàn mới
+## 1. XEM LỚP HỌC
 
-### Tính năng:
-- **Tamper-evident** - Chống giả mạo dữ liệu
-- **Cryptographic verification** cho transaction
-- **Audit trail** tự động
-- **Blockchain-like** technology trong SQL Server
+### API: `GET /api/crud/course-classes/`
+**Payload:** Không cần payload (GET request)
 
-### Ví dụ:
-```sql
--- Tạo ledger table cho audit transaction
-CREATE TABLE TransactionLedger (
-    TransactionID INT IDENTITY PRIMARY KEY,
-    FromAccountID INT NOT NULL,
-    ToAccountID INT NOT NULL,
-    Amount DECIMAL(18,2) NOT NULL,
-    TransactionDate DATETIME2 DEFAULT GETDATE(),
-    Description NVARCHAR(500)
-) WITH (LEDGER = ON);
-
--- Insert vào ledger table
-INSERT INTO TransactionLedger 
-VALUES (1, 2, 1000000.00, GETDATE(), 'Transfer funds');
-
--- Verify ledger integrity
-SELECT * FROM sys.database_ledger_transactions;
+**Response:**
+```json
+{
+  "course_classes": [
+    {
+      "courseClassId": "string",
+      "courseCode": "string", 
+      "courseName": "string",
+      "subject": "string",
+      "teacher": "string",
+      "semester": "string",
+      "room": "string",
+      "maxStudents": "number",
+      "currentStudents": "number"
+    }
+  ]
+}
 ```
 
-## 📊 2. Query Store Hints - Tính năng mới
+## 2. XEM ĐIỂM VÀ KẾT QUẢ HỌC TẬP
 
-### Tính năng:
-- **Query Store Hints** - Gợi ý tối ưu mới
-- **Wait Statistics** trong Query Store
-- **Query Variant Store** - theo dõi biến thể query
+### API: `GET /api/student/my-grades/`
+**Payload:** Không cần payload
 
-### Cấu hình:
-```sql
--- Bật Query Store với tính năng mới
-ALTER DATABASE BankingSystem 
-SET QUERY_STORE = ON (
-    OPERATION_MODE = READ_WRITE,
-    WAIT_STATS_CAPTURE_MODE = ON,
-    QUERY_CAPTURE_MODE = AUTO
-);
-
--- Sử dụng Query Store Hints
-EXEC sp_query_store_set_hints 
-    @query_id = 1, 
-    @query_hints = N'OPTION(RECOMPILE)';
+**Response:**
+```json
+{
+  "grades": [
+    {
+      "gradeId": "string",
+      "subject": "string",
+      "courseClass": "string", 
+      "semester": "string",
+      "assignmentScore": "number",
+      "midtermScore": "number",
+      "finalScore": "number",
+      "averageScore": "number",
+      "letterGrade": "string",
+      "gradePoint": "number",
+      "isPassed": "boolean"
+    }
+  ]
+}
 ```
 
-## 🔍 3. Intelligent Query Processing 2022 - Tính năng mới
-
-### Tính năng mới:
-- **Parameter Sensitive Plan (PSP) Optimization** - Tối ưu cho parameter khác nhau
-- **Memory Grant Feedback Persistence** - Lưu feedback qua restart
-- **Degree of Parallelism (DOP) Feedback** - Tự động điều chỉnh DOP
-- **Cardinality Estimation (CE) Feedback** - Cải tiến ước lượng
-
-### Ví dụ:
-```sql
--- Bật IQP 2022 features
-ALTER DATABASE SCOPED CONFIGURATION SET PARAMETER_SENSITIVE_PLAN_OPTIMIZATION = ON;
-ALTER DATABASE SCOPED CONFIGURATION SET DOP_FEEDBACK = ON;
-ALTER DATABASE SCOPED CONFIGURATION SET CE_FEEDBACK = ON;
-
--- Query sẽ được tối ưu tự động
-BEGIN TRANSACTION;
-    SELECT * FROM Accounts WHERE Balance > @amount; -- PSP sẽ tối ưu
-COMMIT;
+### API: `POST /api/services/grades/calculate-gpa/`
+**Payload:**
+```json
+{
+  "studentId": "string"
+}
 ```
 
-## 📈 4. Approximate Percentile Functions - Hoàn toàn mới
-
-### Tính năng:
-- **APPROX_PERCENTILE_CONT** - Tính percentile nhanh
-- **APPROX_PERCENTILE_DISC** - Percentile rời rạc
-- **Hiệu suất cao** cho big data analytics trong transaction
-
-### Ví dụ:
-```sql
--- Sử dụng trong transaction để phân tích nhanh
-BEGIN TRANSACTION;
-    -- Tính median balance nhanh hơn 90%
-    SELECT 
-        APPROX_PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY Balance) AS MedianBalance,
-        APPROX_PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY Balance) AS P95Balance
-    FROM Accounts;
-COMMIT;
+**Response:**
+```json
+{
+  "gpa": "number",
+  "totalCredits": "number"
+}
 ```
 
-## 🎯 Tóm tắt Tính Năng Mới 2022
+## 3. ĐĂNG KÝ GIẤY (TÀI LIỆU)
 
-| Tính năng | Loại | Lợi ích chính |
-|-----------|------|----------------|
-| **Ledger Tables** | Hoàn toàn mới | Bảo mật + Audit tự động |
-| **Query Store Hints** | Mới | Tối ưu query linh hoạt |
-| **PSP Optimization** | Mới | Hiệu suất cho parameter khác nhau |
-| **Approximate Percentile** | Mới | Analytics nhanh trong transaction |
+### API: `POST /api/crud/document-requests/create/`
+**Payload:**
+```json
+{
+  "requestId": "string",
+  "documentTypeId": "string",
+  "semesterId": "string", 
+  "purpose": "string",
+  "studentIds": ["string"]
+}
+```
 
-## 🚀 Kết luận
+**Response:**
+```json
+{
+  "message": "Document request created",
+  "id": "string"
+}
+```
 
-SQL Server 2022 tập trung vào **4 tính năng mới chính**:
+### API: `GET /api/crud/document-requests/`
+**Payload:** Không cần payload
 
-1. **Ledger Tables** - Cách mạng trong bảo mật transaction
-2. **Query Store Enhancements** - Quản lý performance tốt hơn
-3. **IQP 2022** - Tối ưu thông minh hơn
-4. **Approximate Functions** - Analytics nhanh cho big data
+**Response:**
+```json
+{
+  "document_requests": [
+    {
+      "requestId": "string",
+      "documentType": "string",
+      "semester": "string",
+      "requestDate": "string",
+      "purpose": "string", 
+      "status": "string"
+    }
+  ]
+}
+```
 
-Những tính năng này là **hoàn toàn mới** hoặc **cải tiến đáng kể** so với SQL Server 2019.
+## 4. NHẬN THÔNG BÁO
+
+### API: `GET /api/services/notifications/unread/`
+**Payload:** Không cần payload
+
+**Response:**
+```json
+{
+  "notifications": [
+    {
+      "notificationId": "string",
+      "title": "string",
+      "content": "string",
+      "notificationType": "string",
+      "priority": "string",
+      "deliveredAt": "string"
+    }
+  ]
+}
+```
+
+### API: `POST /api/services/notifications/{id}/mark-read/`
+**Payload:** Không cần payload (chỉ cần notification ID trong URL)
+
+**Response:**
+```json
+{
+  "message": "Notification marked as read"
+}
+```
+
+## 5. CẬP NHẬT THÔNG TIN CÁ NHÂN, ĐỔI MẬT KHẨU
+
+### API: `PUT /api/crud/users/{id}/update/`
+**Payload:**
+```json
+{
+  "full_name": "string",
+  "email": "string",
+  "phone": "string",
+  "address": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "User updated"
+}
+```
+
+### API: `POST /api/auth/change-password/`
+**Payload:**
+```json
+{
+  "currentPassword": "string",
+  "newPassword": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+## 6. THEO DÕI TIẾN ĐỘ HỌC
+
+### API: `GET /api/services/registration/available-courses/{student_id}/`
+**Payload:** Không cần payload (student ID trong URL)
+
+**Response:**
+```json
+{
+  "courses": [
+    {
+      "courseClassId": "string",
+      "courseCode": "string",
+      "courseName": "string",
+      "subject": "string",
+      "credits": "number",
+      "availableSlots": "number",
+      "room": "string"
+    }
+  ]
+}
+```
+
+### API: `POST /api/services/registration/check-prerequisites/`
+**Payload:**
+```json
+{
+  "studentId": "string",
+  "subjectId": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "canRegister": "boolean",
+  "missingPrerequisites": [
+    {
+      "subjectCode": "string",
+      "subjectName": "string"
+    }
+  ]
+}
+```
+
+### API: `GET /api/crud/tuition-fees/`
+**Payload:** Không cần payload
+
+**Response:**
+```json
+{
+  "tuition_fees": [
+    {
+      "tuitionFeeId": "string",
+      "student": "string",
+      "semester": "string",
+      "totalCredits": "number",
+      "feePerCredit": "number",
+      "totalAmount": "number",
+      "paidAmount": "number",
+      "paymentStatus": "string",
+      "dueDate": "string"
+    }
+  ]
+}
+```
+
+---
+
+## THÔNG TIN CHUNG
+
+**Base URL:** `http://127.0.0.1:8000/api/`
+
+**Authentication:** Tất cả API yêu cầu Session Key trong header:
+```
+Authorization: Session {session_key}
+X-Session-Key: {session_key}
+```
+
+**Đăng nhập Student:**
+```
+POST /api/auth/student/login/
+{
+  "username": "string",
+  "password": "string"
+}
+```
