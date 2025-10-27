@@ -1,0 +1,209 @@
+# POSTMAN TEST - STUDENT APIs
+
+**Base URL:** `http://127.0.0.1:8000`
+
+## 1. ĐĂNG NHẬP
+```
+POST {{base_url}}/api/auth/student/login/
+Content-Type: application/json
+
+{
+  "username": "student001",
+  "password": "password123"
+}
+```
+
+## 2. XEM DASHBOARD
+```
+GET {{base_url}}/api/student/dashboard/
+Authorization: Session {{session_key}}
+```
+
+## 3. XEM ĐIỂM
+```
+GET {{base_url}}/api/student/my-grades/
+Authorization: Session {{session_key}}
+```
+
+## 4. XEM MÔN HỌC CÓ THỂ ĐĂNG KÝ
+```
+GET {{base_url}}/api/services/registration/available-courses/student001/
+Authorization: Session {{session_key}}
+```
+
+## 5. KIỂM TRA MÔN TIÊN QUYẾT
+```
+POST {{base_url}}/api/services/registration/check-prerequisites/
+Authorization: Session {{session_key}}
+Content-Type: application/json
+
+{
+  "studentId": "student001",
+  "subjectId": "MATH101"
+}
+```
+
+## 6. KIỂM TRA XUNG ĐỘT LỊCH
+```
+POST {{base_url}}/api/services/registration/check-schedule-conflict/
+Authorization: Session {{session_key}}
+Content-Type: application/json
+
+{
+  "studentId": "student001",
+  "courseClassId": "CS101_2024_1"
+}
+```
+
+## 7. ĐĂNG KÝ MÔN HỌC
+```
+POST {{base_url}}/api/crud/registrations/create/
+Authorization: Session {{session_key}}
+Content-Type: application/json
+
+{
+  "registrationId": "REG001",
+  "studentId": "student001",
+  "courseClassId": "CS101_2024_1",
+  "semesterId": "2024_1"
+}
+```
+
+## 8. XEM LỊCH HỌC
+```
+GET {{base_url}}/api/student/my-schedule/
+Authorization: Session {{session_key}}
+```
+
+## 9. XEM ĐĂNG KÝ MÔN HỌC
+```
+GET {{base_url}}/api/student/my-registrations/
+Authorization: Session {{session_key}}
+```
+
+## 10. TẠO YÊU CẦU TÀI LIỆU
+```
+POST {{base_url}}/api/crud/document-requests/create/
+Authorization: Session {{session_key}}
+Content-Type: application/json
+
+{
+  "requestId": "DOC001",
+  "documentTypeId": "TRANSCRIPT",
+  "semesterId": "2024_1",
+  "purpose": "Xin việc",
+  "studentIds": ["student001"]
+}
+```
+
+## 11. XEM YÊU CẦU TÀI LIỆU
+```
+GET {{base_url}}/api/student/my-document-requests/
+Authorization: Session {{session_key}}
+```
+
+## 12. XEM HỌC PHÍ
+```
+GET {{base_url}}/api/student/my-tuition-fees/
+Authorization: Session {{session_key}}
+```
+
+## 13. XEM THÔNG BÁO CHƯA ĐỌC
+```
+GET {{base_url}}/api/services/notifications/unread/
+Authorization: Session {{session_key}}
+```
+
+## 14. ĐÁNH DẤU THÔNG BÁO ĐÃ ĐỌC
+```
+POST {{base_url}}/api/services/notifications/NOTIF001/mark-read/
+Authorization: Session {{session_key}}
+```
+
+## 15. XEM THÔNG TIN CÁ NHÂN
+```
+GET {{base_url}}/api/student/profile/
+Authorization: Session {{session_key}}
+```
+
+## 16. CẬP NHẬT THÔNG TIN CÁ NHÂN
+```
+PUT {{base_url}}/api/student/profile/update/
+Authorization: Session {{session_key}}
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn A",
+  "email": "student001@university.edu.vn",
+  "phone": "0123456789"
+}
+```
+
+## 17. ĐỔI MẬT KHẨU
+```
+POST {{base_url}}/api/auth/change-password/
+Authorization: Session {{session_key}}
+Content-Type: application/json
+
+{
+  "currentPassword": "password123",
+  "newPassword": "newpassword456"
+}
+```
+
+## 18. XEM DANH SÁCH KHOA
+```
+GET {{base_url}}/api/crud/departments/
+Authorization: Session {{session_key}}
+```
+
+## 19. XEM DANH SÁCH NGÀNH
+```
+GET {{base_url}}/api/crud/majors/
+Authorization: Session {{session_key}}
+```
+
+## 20. XEM DANH SÁCH MÔN HỌC
+```
+GET {{base_url}}/api/crud/subjects/
+Authorization: Session {{session_key}}
+```
+
+## 21. XEM LỚP HỌC PHẦN
+```
+GET {{base_url}}/api/crud/course-classes/
+Authorization: Session {{session_key}}
+```
+
+## 22. XEM HỌC KỲ
+```
+GET {{base_url}}/api/crud/semesters/
+Authorization: Session {{session_key}}
+```
+
+## 23. ĐĂNG XUẤT
+```
+POST {{base_url}}/api/auth/logout/
+Authorization: Session {{session_key}}
+```
+
+---
+
+## POSTMAN ENVIRONMENT VARIABLES
+
+Tạo Environment trong Postman với các biến:
+
+- `base_url`: `http://127.0.0.1:8000`
+- `session_key`: (sẽ được set sau khi login thành công)
+
+## POSTMAN PRE-REQUEST SCRIPT (cho login)
+
+```javascript
+// Sau khi login thành công, lưu session_key
+pm.test("Save session key", function () {
+    var jsonData = pm.response.json();
+    if (jsonData.session_key) {
+        pm.environment.set("session_key", jsonData.session_key);
+    }
+});
+```
