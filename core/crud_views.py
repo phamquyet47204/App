@@ -422,18 +422,37 @@ def delete_course_class(request, class_id):
 def register_course(request):
     try:
         data = json.loads(request.body)
-        student = Student.objects.get(studentId=data['studentId'])
-        course_class = CourseClass.objects.get(courseClassId=data['courseClassId'])
-        semester = Semester.objects.get(semesterId=data['semesterId'])
-        
+
+        # Validate required ids
+        registration_id = data.get('registrationId')
+        student_id = data.get('studentId')
+        course_class_id = data.get('courseClassId')
+        if not registration_id or not student_id or not course_class_id:
+            return JsonResponse({'error': 'registrationId, studentId, and courseClassId are required'}, status=400)
+
+        student = Student.objects.get(studentId=student_id)
+        course_class = CourseClass.objects.get(courseClassId=course_class_id)
+
+        # Derive semester from payload or course_class
+        semester_id = data.get('semesterId')
+        semester = Semester.objects.get(semesterId=semester_id) if semester_id else course_class.semester
+
         registration = CourseRegistration.objects.create(
-            registrationId=data['registrationId'],
+            registrationId=registration_id,
             student=student,
             courseClass=course_class,
             semester=semester,
             registrationDate=datetime.now().date()
         )
         return JsonResponse({'message': 'Course registered', 'id': registration.registrationId})
+    except Student.DoesNotExist:
+        return JsonResponse({'error': 'Student not found'}, status=404)
+    except CourseClass.DoesNotExist:
+        return JsonResponse({'error': 'Course class not found'}, status=404)
+    except Semester.DoesNotExist:
+        return JsonResponse({'error': 'Semester not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -554,23 +573,63 @@ def list_tuition_fees(request):
 def create_document_request(request):
     try:
         data = json.loads(request.body)
+
+        # Resolve student: students can ONLY create for themselves; admin/teacher may specify studentId
+        student_obj = None
+        student_id = data.get('studentId')
+        if getattr(request.user, 'user_type', None) == 'student':
+            # If student tries to submit for another student, reject
+            try:
+                self_student = Student.objects.get(user=request.user)
+            except Student.DoesNotExist:
+                return JsonResponse({'error': 'Student profile not found'}, status=404)
+            if student_id and student_id != self_student.studentId:
+                return JsonResponse({'error': 'Students cannot create requests for other students'}, status=403)
+            student_obj = self_student
+        else:
+            # Admin/teacher must specify target studentId
+            if not student_id:
+                return JsonResponse({'error': 'studentId is required for this operation'}, status=400)
+            student_obj = Student.objects.get(studentId=student_id)
+
         document_type = DocumentType.objects.get(documentTypeId=data['documentTypeId'])
         semester = Semester.objects.get(semesterId=data['semesterId'])
-        
+
+        # Nếu đã có yêu cầu tương tự (đang chờ/đã duyệt/đã hoàn tất), trả về bản ghi hiện có
+        existing = DocumentRequest.objects.filter(
+            student=student_obj,
+            documentType=document_type,
+            semester=semester,
+            status__in=['pending', 'approved', 'completed']
+        ).order_by('-requestDate').first()
+        if existing:
+            return JsonResponse({
+                'message': 'already_requested',
+                'id': existing.requestId,
+                'status': existing.status
+            }, status=200)
+
+        # Generate requestId if not provided
+        request_id = data.get('requestId')
+        if not request_id:
+            base_prefix = 'DR'
+            next_num = DocumentRequest.objects.count() + 1
+            while True:
+                candidate_id = f"{base_prefix}{next_num:06d}"
+                if not DocumentRequest.objects.filter(requestId=candidate_id).exists():
+                    request_id = candidate_id
+                    break
+                next_num += 1
+
         doc_request = DocumentRequest.objects.create(
-            requestId=data['requestId'],
+            requestId=request_id,
+            student=student_obj,
             documentType=document_type,
             semester=semester,
             requestDate=datetime.now(),
             purpose=data['purpose']
         )
-        
-        # Add students to the request
-        student_ids = data.get('studentIds', [])
-        for student_id in student_ids:
-            student = Student.objects.get(studentId=student_id)
-            doc_request.student.add(student)
-        
+
         return JsonResponse({'message': 'Document request created', 'id': doc_request.requestId})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)

@@ -4,6 +4,7 @@ from django.views.decorators.http import require_http_methods
 import json
 from .models import *
 from .permissions import require_permission
+from django.utils import timezone
 
 # ============ STUDENT PROFILE ============
 @require_permission('view_profile')
@@ -49,31 +50,44 @@ def get_student_profile(request):
 @csrf_exempt
 @require_http_methods(["PUT"])
 def update_student_profile(request):
-    """Cập nhật thông tin cá nhân của student"""
+    """Cập nhật thông tin cá nhân của student - chỉ cho phép sửa phone, address, email"""
     try:
         student = Student.objects.get(user=request.user)
         data = json.loads(request.body)
         
-        # Update user fields
+        # Chỉ cho phép cập nhật các trường được phép
+        allowed_fields = ['phone', 'email']
+        updated_fields = []
+        
         user = student.user
-        if 'fullName' in data:
-            user.full_name = data['fullName']
+        
+        # Cập nhật phone
         if 'phone' in data and hasattr(user, 'phone'):
             user.phone = data['phone']
+            updated_fields.append('phone')
+        
+        # Cập nhật email
+        if 'email' in data:
+            user.email = data['email']
+            updated_fields.append('email')
+        
+        # Cập nhật address (nếu model có field này)
         if 'address' in data and hasattr(user, 'address'):
             user.address = data['address']
+            updated_fields.append('address')
         
-        user.save()
-        
-        # Update student fields
-        if 'dateOfBirth' in data:
-            student.dateOfBirth = data['dateOfBirth']
-        if 'gender' in data:
-            student.gender = data['gender']
-        
-        student.save()
-        
-        return JsonResponse({'message': 'Profile updated successfully'})
+        if updated_fields:
+            user.save()
+            return JsonResponse({
+                'message': 'Profile updated successfully',
+                'updated_fields': updated_fields
+            })
+        else:
+            return JsonResponse({
+                'message': 'No valid fields to update',
+                'allowed_fields': ['phone', 'email', 'address']
+            }, status=400)
+            
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
     except Exception as e:
@@ -158,16 +172,76 @@ def get_my_registrations(request):
 # ============ STUDENT DOCUMENT REQUESTS ============
 @require_permission('view_documents')
 @csrf_exempt
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "POST"])
 def get_my_document_requests(request):
-    """Xem yêu cầu tài liệu của student"""
+    """GET: Xem yêu cầu tài liệu của student; POST: Tạo yêu cầu mới và xếp hàng chờ"""
     try:
         student = Student.objects.get(user=request.user)
-        
+
+        if request.method == 'POST':
+            # Chỉ cho phép nếu có quyền request_document
+            from .permissions import RolePermission
+            if not RolePermission.has_permission(request.user, 'request_document'):
+                return JsonResponse({'error': 'Permission denied'}, status=403)
+
+            payload = json.loads(request.body)
+            document_type_id = payload.get('documentTypeId')
+            semester_id = payload.get('semesterId')
+            purpose = payload.get('purpose')
+            if not document_type_id or not semester_id or not purpose:
+                return JsonResponse({'error': 'documentTypeId, semesterId, purpose are required'}, status=400)
+
+            document_type = DocumentType.objects.get(documentTypeId=document_type_id)
+            semester = Semester.objects.get(semesterId=semester_id)
+
+            # Nếu đã có yêu cầu cho cùng loại tài liệu trong cùng học kỳ thì trả về thông tin hiện có
+            existing = DocumentRequest.objects.filter(
+                student=student,
+                documentType=document_type,
+                semester=semester,
+                status__in=['pending', 'approved', 'completed']
+            ).order_by('-requestDate').first()
+            if existing:
+                return JsonResponse({
+                    'message': 'already_requested',
+                    'requestId': existing.requestId,
+                    'status': existing.status
+                }, status=200)
+
+            # Tạo requestId tự tăng dựa theo số lượng hiện có, đảm bảo không trùng
+            base_prefix = 'DR'
+            next_num = DocumentRequest.objects.count() + 1
+            while True:
+                candidate_id = f"{base_prefix}{next_num:06d}"
+                if not DocumentRequest.objects.filter(requestId=candidate_id).exists():
+                    break
+                next_num += 1
+
+            # Tính vị trí hàng chờ hiện tại (pending)
+            queue_position = DocumentRequest.objects.filter(status='pending').count() + 1
+
+            created = DocumentRequest.objects.create(
+                requestId=candidate_id,
+                student=student,
+                documentType=document_type,
+                semester=semester,
+                requestDate=timezone.now(),
+                purpose=purpose,
+                status='pending'
+            )
+
+            return JsonResponse({
+                'message': 'Document request created',
+                'requestId': created.requestId,
+                'queuePosition': queue_position,
+                'status': created.status
+            }, status=201)
+
+        # GET: Danh sách yêu cầu của sinh viên
         document_requests = DocumentRequest.objects.filter(
             student=student
         ).select_related('documentType').order_by('-requestDate')
-        
+
         data = []
         for req in document_requests:
             data.append({
@@ -181,11 +255,16 @@ def get_my_document_requests(request):
                 'status': req.status,
                 'requestDate': req.requestDate.isoformat(),
                 'approvedDate': req.approvedDate.isoformat() if req.approvedDate else None,
-                'rejectedReason': getattr(req, 'rejectionReason', ''),
-                'notes': getattr(req, 'notes', '')
+                'rejectedReason': getattr(req, 'rejectionReason', '')
             })
-        
+
         return JsonResponse({'documentRequests': data})
+    except DocumentType.DoesNotExist:
+        return JsonResponse({'error': 'Document type not found'}, status=404)
+    except Semester.DoesNotExist:
+        return JsonResponse({'error': 'Semester not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
     except Student.DoesNotExist:
         return JsonResponse({'error': 'Student not found'}, status=404)
     except Exception as e:

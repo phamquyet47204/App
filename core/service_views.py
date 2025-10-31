@@ -98,32 +98,45 @@ def class_statistics(request, class_id):
 def check_prerequisites(request):
     try:
         data = json.loads(request.body)
-        student = Student.objects.get(studentId=data['studentId'])
-        subject = Subject.objects.get(subjectId=data['subjectId'])
-        
+        student_id = data.get('studentId')
+        subject_id = data.get('subjectId')
+        if not student_id or not subject_id:
+            return JsonResponse({'error': 'studentId and subjectId are required'}, status=400)
+
+        try:
+            student = Student.objects.get(studentId=student_id)
+        except Student.DoesNotExist:
+            return JsonResponse({'error': 'Student not found'}, status=404)
+        try:
+            subject = Subject.objects.get(subjectId=subject_id)
+        except Subject.DoesNotExist:
+            return JsonResponse({'error': 'Subject not found'}, status=404)
+
         # Check if student has completed prerequisites
         prerequisites = subject.prerequisites.all()
         missing_prerequisites = []
-        
+
         for prereq in prerequisites:
             passed_grade = Grade.objects.filter(
-                student=student, 
-                subject=prereq, 
+                student=student,
+                subject=prereq,
                 isPassed=True
             ).exists()
-            
+
             if not passed_grade:
                 missing_prerequisites.append({
                     'subjectCode': prereq.subjectCode,
                     'subjectName': prereq.subjectName
                 })
-        
+
         can_register = len(missing_prerequisites) == 0
-        
+
         return JsonResponse({
             'canRegister': can_register,
             'missingPrerequisites': missing_prerequisites
         })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -133,16 +146,27 @@ def check_prerequisites(request):
 def check_schedule_conflict(request):
     try:
         data = json.loads(request.body)
-        student = Student.objects.get(studentId=data['studentId'])
-        course_class = CourseClass.objects.get(courseClassId=data['courseClassId'])
-        
+        student_id = data.get('studentId')
+        course_class_id = data.get('courseClassId')
+        if not student_id or not course_class_id:
+            return JsonResponse({'error': 'studentId and courseClassId are required'}, status=400)
+
+        try:
+            student = Student.objects.get(studentId=student_id)
+        except Student.DoesNotExist:
+            return JsonResponse({'error': 'Student not found'}, status=404)
+        try:
+            course_class = CourseClass.objects.get(courseClassId=course_class_id)
+        except CourseClass.DoesNotExist:
+            return JsonResponse({'error': 'Course class not found'}, status=404)
+
         # Get student's current registrations for the semester
         current_registrations = CourseRegistration.objects.filter(
             student=student,
             semester=course_class.semester,
             status='registered'
         ).select_related('courseClass')
-        
+
         conflicts = []
         for reg in current_registrations:
             if reg.courseClass.schedule == course_class.schedule:
@@ -151,13 +175,15 @@ def check_schedule_conflict(request):
                     'courseName': reg.courseClass.courseName,
                     'schedule': str(reg.courseClass.schedule)
                 })
-        
+
         has_conflict = len(conflicts) > 0
-        
+
         return JsonResponse({
             'hasConflict': has_conflict,
             'conflicts': conflicts
         })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
