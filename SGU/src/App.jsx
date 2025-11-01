@@ -4,11 +4,10 @@ import { Layout } from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import ClassesPage from './pages/ClassesPage';
-import GradesPage from './pages/GradesPage';
 import DocumentsPage from './pages/DocumentsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ProfilePage from './pages/ProfilePage';
-// import ProgressPage from './pages/ProgressPage';
+import ProgressPage from './pages/ProgressPage';
 import RegistrationPage from './pages/RegistrationPage';
 import LookupPage from './pages/LookupPage';
 import SchedulePage from './pages/SchedulePage';
@@ -47,19 +46,17 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <HomePage />;
+        return <HomePage onPageChange={setCurrentPage} />;
       case 'classes':
         return <ClassesPage />;
-      case 'grades':
-        return <GradesPage />;
       case 'documents':
         return <DocumentsPage />;
       case 'notifications':
         return <NotificationsPage />;
       case 'profile':
         return <ProfilePage />;
-      // case 'progress':
-      //   return <ProgressPage />;
+      case 'progress':
+        return <ProgressPage />;
       case 'registration':
         return <RegistrationPage />;
       case 'lookup':
@@ -79,8 +76,6 @@ function App() {
         return 'Trang chủ';
       case 'classes':
         return 'Lớp học';
-      case 'grades':
-        return 'Điểm số';
       case 'documents':
         return 'Giấy tờ';
       case 'notifications':

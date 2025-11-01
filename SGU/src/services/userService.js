@@ -6,9 +6,10 @@ class UserService {
   async getStudentProfile() {
     try {
       const response = await apiService.get(API_ENDPOINTS.STUDENT_PROFILE);
+      const studentData = response.student || response || null;
       return {
-        success: true,
-        data: response.student
+        success: !!studentData,
+        data: studentData
       };
     } catch (error) {
       console.error('Get student profile error:', error);

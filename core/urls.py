@@ -24,7 +24,6 @@ urlpatterns = [
     path('admin/manage-users/', views.manage_users, name='manage_users'),
     path('admin/approve-document/', views.approve_document, name='approve_document'),
     path('teacher/input-grades/', views.input_grades, name='input_grades'),
-    path('student/my-grades/', views.view_my_grades, name='view_my_grades'),
     
     # CRUD endpoints
     path('crud/', include('core.crud_urls')),

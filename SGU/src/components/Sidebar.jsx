@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { 
   X, Home, Calendar, Sun, Moon, GraduationCap, RefreshCw,
   ArrowLeft, ChevronRight, ChevronDown, LogOut, BookOpen,
-  Award, FileText, Bell, User, Search, DollarSign
+  Award, FileText, Bell, User, Search, DollarSign, TrendingUp
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -37,10 +37,10 @@ const Sidebar = ({
     { id: 'registration', label: 'Đăng ký môn học', icon: BookOpen, description: 'Đăng ký và quản lý các môn học' },
     { id: 'schedule', label: 'Lịch học', icon: Calendar, description: 'Xem lịch học trong tuần' },
     { id: 'classes', label: 'Xem lớp học', icon: BookOpen, description: 'Xem thông tin lớp học và lịch học' },
-    { id: 'grades', label: 'Xem điểm và kết quả học tập', icon: Award, description: 'Xem điểm số và kết quả học tập' },
+    { id: 'progress', label: 'Tiến độ học', icon: TrendingUp, description: 'Xem lớp học đã hoàn thành và tiến độ học tập' },
     { id: 'documents', label: 'Đăng ký giấy', icon: FileText, description: 'Đăng ký các loại giấy tờ cần thiết' },
     { id: 'notifications', label: 'Nhận thông báo', icon: Bell, description: 'Xem thông báo và cập nhật mới' },
-    { id: 'profile', label: 'Cập nhật thông tin cá nhân', icon: User, description: 'Quản lý thông tin cá nhân và đổi mật khẩu' },
+    { id: 'profile', label: 'Cập nhật thông tin cá nhân', icon: User, description: 'Thông tin cá nhân và đổi mật khẩu' },
     { id: 'lookup', label: 'Tra cứu', icon: Search, description: 'Tra cứu thông tin khoa, ngành, môn học' },
     { id: 'tuition', label: 'Học phí', icon: DollarSign, description: 'Xem và thanh toán học phí' }
   ];

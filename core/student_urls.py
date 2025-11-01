@@ -11,8 +11,12 @@ urlpatterns = [
     # Student schedule
     path('my-schedule/', student_views.get_my_schedule, name='my_schedule'),
     
+    # Student grades
+    path('my-grades/', student_views.get_my_grades, name='my_grades'),
+    
     # Student registrations
     path('my-registrations/', student_views.get_my_registrations, name='my_registrations'),
+    path('my-completed-courses/', student_views.get_my_completed_courses, name='my_completed_courses'),
     
     # Student document requests
     path('my-document-requests/', student_views.get_my_document_requests, name='my_document_requests'),

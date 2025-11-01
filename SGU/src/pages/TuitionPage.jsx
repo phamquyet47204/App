@@ -34,7 +34,11 @@ const TuitionPage = () => {
     }
   };
 
-  const getPaymentStatusColor = (status) => {
+  const getPaymentStatusColor = (status, remainingAmount) => {
+    if (remainingAmount === 0)
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+    if (remainingAmount > 0)
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
     switch (status) {
       case 'paid': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
@@ -44,7 +48,9 @@ const TuitionPage = () => {
     }
   };
 
-  const getPaymentStatusText = (status) => {
+  const getPaymentStatusText = (status, remainingAmount) => {
+    if (remainingAmount === 0) return 'Hoàn thành';
+    if (remainingAmount > 0) return 'Chưa hoàn thành';
     switch (status) {
       case 'paid': return 'Đã thanh toán';
       case 'pending': return 'Chờ thanh toán';
@@ -174,8 +180,41 @@ const TuitionPage = () => {
         </Card>
       </div>
 
+      {/* Banking Information */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-900">
+            <CreditCard className="h-5 w-5" />
+            Thông tin chuyển khoản
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-white rounded-lg p-4 border border-blue-200">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Ngân hàng:</span>
+                <span className="text-sm font-semibold text-gray-900">SGU</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Số tài khoản:</span>
+                <span className="text-sm font-semibold text-blue-600 font-mono">0000000000000000</span>
+              </div>
+              <div className="pt-2 mt-2 border-t border-gray-200 space-y-2">
+                <p className="text-xs text-gray-600">
+                  <strong>Lưu ý:</strong> Vui lòng ghi rõ nội dung chuyển khoản: <span className="font-semibold">Học phí - Mã số sinh viên - Học kỳ</span>
+                </p>
+                <div className="flex items-center gap-2 pt-2">
+                  <span className="text-xs font-medium text-gray-700">Hoặc đóng trực tiếp tại:</span>
+                  <span className="text-xs font-semibold text-blue-600">Phòng Tài chính A.001</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="all" className="space-y-4">
-      <div className="overflow-x-auto scrollbar-hide">
+      {/* <div className="overflow-x-auto scrollbar-hide">
         <TabsList className="flex sm:grid sm:grid-cols-4 bg-gray-50 dark:bg-white-100/30 rounded-lg p-1 gap-0 min-w-max sm:min-w-0">
           <TabsTrigger
             value="all"
@@ -228,7 +267,7 @@ const TuitionPage = () => {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
-      `}</style>
+      `}</style> */}
 
         <TabsContent value="all" className="space-y-4">
           <div className="space-y-4">
@@ -249,10 +288,10 @@ const TuitionPage = () => {
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge className={getPaymentStatusColor(fee.paymentStatus)}>
+                      <Badge className={getPaymentStatusColor(fee.paymentStatus, fee.remainingAmount)}>
                         <div className="flex items-center space-x-1">
                           {getPaymentStatusIcon(fee.paymentStatus)}
-                          <span>{getPaymentStatusText(fee.paymentStatus)}</span>
+                          <span>{getPaymentStatusText(fee.paymentStatus, fee.remainingAmount)}</span>
                         </div>
                       </Badge>
                       {fee.isOverdue && (
@@ -282,12 +321,12 @@ const TuitionPage = () => {
                         {formatCurrency(fee.remainingAmount)}
                       </p>
                     </div>
-                    <div>
+                    {/* <div>
                       <p className="text-gray-600 dark:text-gray-400">Phí/tín chỉ</p>
                       <p className="text-lg font-semibold text-gray-900 dark:text-black">
                         {formatCurrency(fee.feePerCredit)}
                       </p>
-                    </div>
+                    </div> */}
                   </div>
                 </CardContent>
               </Card>
@@ -313,10 +352,10 @@ const TuitionPage = () => {
                         Hạn thanh toán: {formatDate(fee.dueDate)}
                       </p>
                     </div>
-                    <Badge className={getPaymentStatusColor(fee.paymentStatus)}>
+                    <Badge className={getPaymentStatusColor(fee.paymentStatus, fee.remainingAmount)}>
                       <div className="flex items-center space-x-1">
                         {getPaymentStatusIcon(fee.paymentStatus)}
-                        <span>{getPaymentStatusText(fee.paymentStatus)}</span>
+                        <span>{getPaymentStatusText(fee.paymentStatus, fee.remainingAmount)}</span>
                       </div>
                     </Badge>
                   </div>
@@ -401,10 +440,10 @@ const TuitionPage = () => {
                         Đã thanh toán: {formatDate(fee.dueDate)}
                       </p>
                     </div>
-                    <Badge className={getPaymentStatusColor(fee.paymentStatus)}>
+                    <Badge className={getPaymentStatusColor(fee.paymentStatus, fee.remainingAmount)}>
                       <div className="flex items-center space-x-1">
                         {getPaymentStatusIcon(fee.paymentStatus)}
-                        <span>{getPaymentStatusText(fee.paymentStatus)}</span>
+                        <span>{getPaymentStatusText(fee.paymentStatus, fee.remainingAmount)}</span>
                       </div>
                     </Badge>
                   </div>
@@ -455,10 +494,10 @@ const TuitionPage = () => {
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Tổng tín chỉ</label>
                   <p className="text-gray-900 dark:text-black">{selectedFee.totalCredits}</p>
                 </div>
-                <div>
+                {/* <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phí/tín chỉ</label>
                   <p className="text-gray-900 dark:text-black">{formatCurrency(selectedFee.feePerCredit)}</p>
-                </div>
+                </div> */}
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Tổng số tiền</label>
                   <p className="text-gray-900 dark:text-black">{formatCurrency(selectedFee.totalAmount)}</p>

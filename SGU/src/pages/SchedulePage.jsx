@@ -99,10 +99,24 @@ const SchedulePage = () => {
     ? mySchedule 
     : mySchedule.filter(course => course.dayOfWeek === selectedDay);
 
-  const scheduleByDay = daysOfWeek.slice(1).map(day => ({
-    ...day,
-    courses: mySchedule.filter(course => course.dayOfWeek === day.value)
-  }));
+  const scheduleByDay = daysOfWeek.slice(1).map(day => {
+    const coursesForDay = mySchedule.filter(course => {
+      // Normalize both values for comparison (lowercase, trim)
+      const courseDay = course.dayOfWeek ? course.dayOfWeek.toLowerCase().trim() : null;
+      const dayValue = day.value.toLowerCase().trim();
+      return courseDay === dayValue;
+    });
+    
+    return {
+      ...day,
+      courses: coursesForDay
+    };
+  });
+
+  // Filter scheduleByDay dựa trên selectedDay
+  const displayedSchedule = selectedDay === 'all' 
+    ? scheduleByDay 
+    : scheduleByDay.filter(day => day.value === selectedDay);
 
   if (loading) {
     return (
@@ -161,8 +175,8 @@ const SchedulePage = () => {
           </div>
 
           {/* Weekly Schedule Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-            {scheduleByDay.map((day) => (
+          <div className={`grid gap-4 ${selectedDay === 'all' ? 'grid-cols-1 md:grid-cols-7' : 'grid-cols-1 md:grid-cols-1 max-w-2xl mx-auto'}`}>
+            {displayedSchedule.map((day) => (
               <Card key={day.id} className="min-h-[400px]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-center">

@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
   // Schedule APIs
   MY_SCHEDULE: `${API_CONFIG.BASE_URL}/student/my-schedule/`,
   MY_REGISTRATIONS: `${API_CONFIG.BASE_URL}/student/my-registrations/`,
+  MY_COMPLETED_COURSES: `${API_CONFIG.BASE_URL}/student/my-completed-courses/`,
   
   // Document Request APIs
   DOCUMENT_REQUESTS: `${API_CONFIG.BASE_URL}/crud/document-requests/`,

@@ -1,6 +1,8 @@
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from datetime import timedelta
 import json
 import csv
 from decimal import Decimal
@@ -96,17 +98,37 @@ def class_statistics(request, class_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def check_prerequisites(request):
+    """
+    Kiểm tra prerequisites - studentId có thể là studentId hoặc username
+    Nếu không có studentId, tự động lấy từ user hiện tại
+    """
     try:
         data = json.loads(request.body)
-        student_id = data.get('studentId')
         subject_id = data.get('subjectId')
-        if not student_id or not subject_id:
-            return JsonResponse({'error': 'studentId and subjectId are required'}, status=400)
-
-        try:
-            student = Student.objects.get(studentId=student_id)
-        except Student.DoesNotExist:
-            return JsonResponse({'error': 'Student not found'}, status=404)
+        if not subject_id:
+            return JsonResponse({'error': 'subjectId is required'}, status=400)
+        
+        # Lấy student - ưu tiên từ user hiện tại, nếu không thì từ studentId/username trong payload
+        student = None
+        student_id = data.get('studentId')
+        
+        if not student_id:
+            # Tự động lấy từ user hiện tại
+            try:
+                student = Student.objects.get(user=request.user)
+            except Student.DoesNotExist:
+                return JsonResponse({'error': 'Student profile not found. Please provide studentId or ensure you are logged in as a student.'}, status=404)
+        else:
+            # Thử tìm theo studentId hoặc username
+            try:
+                student = Student.objects.get(studentId=student_id)
+            except Student.DoesNotExist:
+                try:
+                    user = User.objects.get(username=student_id)
+                    student = Student.objects.get(user=user)
+                except (User.DoesNotExist, Student.DoesNotExist):
+                    return JsonResponse({'error': 'Student not found'}, status=404)
+        
         try:
             subject = Subject.objects.get(subjectId=subject_id)
         except Subject.DoesNotExist:
@@ -144,17 +166,37 @@ def check_prerequisites(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def check_schedule_conflict(request):
+    """
+    Kiểm tra schedule conflict - studentId có thể là studentId hoặc username
+    Nếu không có studentId, tự động lấy từ user hiện tại
+    """
     try:
         data = json.loads(request.body)
-        student_id = data.get('studentId')
         course_class_id = data.get('courseClassId')
-        if not student_id or not course_class_id:
-            return JsonResponse({'error': 'studentId and courseClassId are required'}, status=400)
-
-        try:
-            student = Student.objects.get(studentId=student_id)
-        except Student.DoesNotExist:
-            return JsonResponse({'error': 'Student not found'}, status=404)
+        if not course_class_id:
+            return JsonResponse({'error': 'courseClassId is required'}, status=400)
+        
+        # Lấy student - ưu tiên từ user hiện tại, nếu không thì từ studentId/username trong payload
+        student = None
+        student_id = data.get('studentId')
+        
+        if not student_id:
+            # Tự động lấy từ user hiện tại
+            try:
+                student = Student.objects.get(user=request.user)
+            except Student.DoesNotExist:
+                return JsonResponse({'error': 'Student profile not found. Please provide studentId or ensure you are logged in as a student.'}, status=404)
+        else:
+            # Thử tìm theo studentId hoặc username
+            try:
+                student = Student.objects.get(studentId=student_id)
+            except Student.DoesNotExist:
+                try:
+                    user = User.objects.get(username=student_id)
+                    student = Student.objects.get(user=user)
+                except (User.DoesNotExist, Student.DoesNotExist):
+                    return JsonResponse({'error': 'Student not found'}, status=404)
+        
         try:
             course_class = CourseClass.objects.get(courseClassId=course_class_id)
         except CourseClass.DoesNotExist:
@@ -190,21 +232,184 @@ def check_schedule_conflict(request):
 @require_http_methods(["GET"])
 @csrf_exempt
 def available_courses(request, student_id):
+    """
+    Lấy danh sách môn học có thể đăng ký cho student
+    - Chỉ lấy courses của semester active
+    - Loại bỏ courses đã đăng ký
+    - Chỉ lấy courses còn chỗ (currentStudents < maxStudents)
+    - Kiểm tra registration period
+    
+    student_id có thể là studentId hoặc username
+    """
     try:
-        # Đơn giản hóa - chỉ trả về tất cả course classes
-        all_courses = CourseClass.objects.filter(status=True).select_related('subject')
+        # Lấy student - thử tìm theo studentId trước, sau đó theo username
+        try:
+            student = Student.objects.get(studentId=student_id)
+        except Student.DoesNotExist:
+            try:
+                # Nếu không tìm thấy theo studentId, thử tìm theo username
+                user = User.objects.get(username=student_id)
+                student = Student.objects.get(user=user)
+            except (User.DoesNotExist, Student.DoesNotExist):
+                return JsonResponse({'error': 'Student not found'}, status=404)
         
-        data = [{
-            'courseClassId': c.courseClassId,
-            'courseCode': c.courseCode,
-            'courseName': c.courseName,
-            'subject': c.subject.subjectName,
-            'credits': c.subject.credits,
-            'room': c.room
-        } for c in all_courses]
+        # Lấy semester active
+        active_semester = Semester.objects.filter(status='active').first()
+        if not active_semester:
+            return JsonResponse({'courses': [], 'message': 'No active semester'})
         
-        return JsonResponse({'courses': data})
+        # Kiểm tra registration period
+        now = timezone.now()
+        
+        # Nếu không có registration period được set, coi như luôn mở
+        if not active_semester.registrationStart or not active_semester.registrationEnd:
+            is_in_registration_period = True
+        else:
+            # Kiểm tra xem có trong period không
+            is_in_registration_period = (
+                active_semester.registrationStart <= now <= active_semester.registrationEnd
+            )
+            
+            # Nếu period ở quá xa trong tương lai (> 1 năm), coi như lỗi data và mở luôn
+            if active_semester.registrationStart > now + timedelta(days=365):
+                print(f"WARNING: Registration period seems to be in the far future, treating as open")
+                is_in_registration_period = True
+        
+        print(f"DEBUG: Registration period check:")
+        print(f"  - Now: {now}")
+        print(f"  - Start: {active_semester.registrationStart}")
+        print(f"  - End: {active_semester.registrationEnd}")
+        print(f"  - Is open: {is_in_registration_period}")
+        
+        # Debug: In ra thông tin
+        print(f"DEBUG: Student: {student.studentId}, Semester: {active_semester.semesterId}")
+        
+        # Lấy courses của semester active, còn chỗ, chưa đăng ký
+        registered_course_ids = CourseRegistration.objects.filter(
+            student=student,
+            semester=active_semester,
+            status__in=['registered', 'pending']
+        ).values_list('courseClass__courseClassId', flat=True)
+        
+        print(f"DEBUG: Registered courses: {list(registered_course_ids)}")
+        
+        # Kiểm tra tất cả courses trong semester
+        all_courses_in_semester = CourseClass.objects.filter(semester=active_semester)
+        print(f"DEBUG: Total courses in semester: {all_courses_in_semester.count()}")
+        for c in all_courses_in_semester:
+            print(f"  - {c.courseClassId}: status={c.status} (type: {type(c.status)}), current={c.currentStudents}, max={c.maxStudents}")
+        
+        # Filter courses - status là BooleanField với default=True
+        # Chỉ filter status=True nếu có, nếu không thì lấy tất cả
+        available_courses = CourseClass.objects.filter(
+            semester=active_semester,
+            status=True  # BooleanField
+        ).exclude(
+            courseClassId__in=registered_course_ids
+        ).filter(
+            currentStudents__lt=F('maxStudents')
+        ).select_related('subject', 'teacher__user', 'semester')
+        
+        print(f"DEBUG: Available courses after filter: {available_courses.count()}")
+        for c in available_courses:
+            print(f"  - Available: {c.courseClassId} ({c.courseCode})")
+        
+        # Build response data
+        data = []
+        for course in available_courses:
+            # Kiểm tra prerequisites
+            prerequisites = course.subject.prerequisites.all()
+            prerequisites_met = True
+            prerequisites_info = []
+            
+            if prerequisites.exists():
+                # Kiểm tra student đã pass prerequisites chưa
+                for prereq in prerequisites:
+                    prereq_grade = Grade.objects.filter(
+                        student=student,
+                        subject=prereq,
+                        isPassed=True
+                    ).exists()
+                    prerequisites_info.append({
+                        'subjectCode': prereq.subjectCode,
+                        'subjectName': prereq.subjectName,
+                        'met': prereq_grade
+                    })
+                    if not prereq_grade:
+                        prerequisites_met = False
+            
+            # Tính số chỗ còn lại
+            available_slots = course.maxStudents - course.currentStudents
+            
+            course_data = {
+                'courseClassId': course.courseClassId,
+                'courseCode': course.courseCode,
+                'courseName': course.courseName,
+                'subject': {
+                    'subjectId': course.subject.subjectId,
+                    'subjectCode': course.subject.subjectCode,
+                    'subjectName': course.subject.subjectName,
+                    'credits': course.subject.credits
+                },
+                'teacher': {
+                    'teacherId': course.teacher.teacherId if course.teacher else None,
+                    'teacherCode': course.teacher.teacherCode if course.teacher else None,
+                    'name': course.teacher.user.full_name if course.teacher else 'TBA'
+                },
+                'semester': {
+                    'semesterId': course.semester.semesterId,
+                    'semesterName': course.semester.semesterName
+                },
+                'room': course.room,
+                'maxStudents': course.maxStudents,
+                'currentStudents': course.currentStudents,
+                'availableSlots': available_slots,
+                'prerequisites': prerequisites_info,
+                'prerequisitesMet': prerequisites_met,
+                'canRegister': prerequisites_met and is_in_registration_period and available_slots > 0,
+                'registrationPeriod': is_in_registration_period,
+                'registrationStart': active_semester.registrationStart.isoformat() if active_semester.registrationStart else None,
+                'registrationEnd': active_semester.registrationEnd.isoformat() if active_semester.registrationEnd else None
+            }
+            
+            # Thêm schedule info nếu có (parse từ DateTimeField)
+            if course.schedule:
+                # Parse datetime thành day of week và time
+                schedule_dt = course.schedule
+                # Lấy tên thứ trong tuần
+                days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                day_index = schedule_dt.weekday()  # 0=Monday, 6=Sunday
+                day_name = days_of_week[day_index]
+                
+                # Format thời gian
+                start_time = schedule_dt.strftime('%H:%M')
+                # Giả sử mỗi lớp học kéo dài 2 giờ (có thể điều chỉnh)
+                end_time = (schedule_dt + timedelta(hours=2)).strftime('%H:%M')
+                
+                course_data['schedule'] = {
+                    'dayOfWeek': day_name.lower(),  # monday, tuesday, ...
+                    'dayOfWeekDisplay': day_name,  # Monday, Tuesday, ...
+                    'startTime': start_time,
+                    'endTime': end_time,
+                    'datetime': schedule_dt.isoformat(),
+                    'date': schedule_dt.strftime('%Y-%m-%d'),
+                    'time': start_time + ' - ' + end_time
+                }
+            
+            data.append(course_data)
+        
+        return JsonResponse({
+            'courses': data,
+            'semester': {
+                'semesterId': active_semester.semesterId,
+                'semesterName': active_semester.semesterName,
+                'isRegistrationOpen': is_in_registration_period
+            },
+            'total': len(data)
+        })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=400)
 
 # ============ NOTIFICATION SERVICE ============

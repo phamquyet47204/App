@@ -187,7 +187,7 @@ const NotificationsPage = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className={`font-semibold ${
-                          !notification.isRead ? 'text-gray-900 dark:text-black' : 'text-gray-100 dark:text-gray-300'
+                          !notification.isRead ? 'text-gray-900 dark:text-black' : 'text-black-100 dark:text-black-300'
                         }`}>
                           {notification.title}
                         </h3>
@@ -203,7 +203,7 @@ const NotificationsPage = () => {
                         </div>
                       </div>
                       <p className={`text-sm mb-2 ${
-                        !notification.isRead ? '' : 'text-gray-600 dark:text-gray-400'
+                        !notification.isRead ? '' : 'text-black-600 dark:text-black-400'
                       }`}>
                         {notification.content || notification.message}
                       </p>

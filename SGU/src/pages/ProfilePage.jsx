@@ -15,21 +15,8 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState({});
 
-  // Lấy thông tin user từ localStorage hoặc API
-  const [userInfo, setUserInfo] = useState({
-    id: '1',
-    studentId: '2021001234',
-    fullName: 'Nguyễn Văn A',
-    email: 'nguyenvana@sgu.edu.vn',
-    phone: '0123456789',
-    dateOfBirth: '2003-01-15',
-    address: '123 Đường ABC, Quận 1, TP.HCM',
-    major: 'Công nghệ thông tin',
-    class: 'CNTT01',
-    year: '2021',
-    avatar: null
-  });
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -51,17 +38,18 @@ const ProfilePage = () => {
           ...prev,
           id: profileData.studentId,
           studentId: profileData.studentCode,
-          fullName: profileData.user?.fullName || profileData.fullName,
-          email: profileData.user?.email,
-          phone: profileData.user?.phone,
+          fullName: profileData.fullName,
+          email: profileData.email,
+          phone: profileData.phone,
           dateOfBirth: profileData.dateOfBirth,
-          address: profileData.user?.address,
+          address: profileData.address,
+          gender: profileData.gender,
           major: profileData.studentClass?.major?.majorName,
           class: profileData.studentClass?.className,
-          year: profileData.enrollmentYear,
+          year: profileData.enrollmentYear || '',
           gpa: profileData.gpa,
           totalCredits: profileData.totalCredits
-        }));
+        }));        
       } else {
         // Fallback to localStorage if API fails
         const savedUser = AuthStorage.getCurrentUser();
@@ -214,7 +202,7 @@ const ProfilePage = () => {
         <TabsContent value="profile" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Avatar Section */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Ảnh đại diện</CardTitle>
                 <CardDescription>
@@ -235,7 +223,7 @@ const ProfilePage = () => {
                   </Button>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Personal Information */}
             <div className="lg:col-span-2 space-y-6">
@@ -254,7 +242,7 @@ const ProfilePage = () => {
                         id="fullName"
                         value={userInfo.fullName}
                         onChange={(e) => handleInputChange('fullName', e.target.value)}
-                        disabled={!isEditing}
+                        disabled
                       />
                     </div>
                     <div className="space-y-2">
@@ -263,7 +251,7 @@ const ProfilePage = () => {
                         id="studentId"
                         value={userInfo.studentId}
                         disabled
-                        className="bg-gray-100 dark:bg-gray-800"
+                        className="text-black"
                       />
                     </div>
                     <div className="space-y-2">
@@ -273,7 +261,7 @@ const ProfilePage = () => {
                         type="email"
                         value={userInfo.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        disabled={!isEditing}
+                        disabled
                       />
                     </div>
                     <div className="space-y-2">
@@ -292,16 +280,16 @@ const ProfilePage = () => {
                         type="date"
                         value={userInfo.dateOfBirth}
                         onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                        disabled={!isEditing}
+                        disabled
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="year">Năm nhập học</Label>
+                      <Label htmlFor="totalCredits">Số tín chỉ</Label>
                       <Input
-                        id="year"
-                        value={userInfo.year}
+                        id="totalCredits"
+                        value={userInfo.totalCredits}
                         disabled
-                        className="bg-gray-100 dark:bg-gray-800"
+                        // className="bg-gray-100 dark:bg-gray-800"
                       />
                     </div>
                   </div>
@@ -312,6 +300,24 @@ const ProfilePage = () => {
                       value={userInfo.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
                       disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Giới tính</Label>
+                    <Input
+                      id="gender"
+                      value={userInfo.gender}
+                      onChange={(e) => handleInputChange('gender', e.target.value)}
+                      disabled
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gpa">GPA</Label>
+                    <Input
+                      id="gpa"
+                      value={userInfo.gpa?.toFixed(1)}
+                      onChange={(e) => handleInputChange('gpa', e.target.value)}
+                      disabled
                     />
                   </div>
                 </CardContent>
@@ -332,7 +338,7 @@ const ProfilePage = () => {
                         id="major"
                         value={userInfo.major}
                         disabled
-                        className="bg-gray-100 dark:bg-gray-800"
+                        // className="bg-gray-100 dark:bg-gray-800"
                       />
                     </div>
                     <div className="space-y-2">
@@ -341,7 +347,7 @@ const ProfilePage = () => {
                         id="class"
                         value={userInfo.class}
                         disabled
-                        className="bg-gray-100 dark:bg-gray-800"
+                        // className="text-gray-100 dark:bg-gray-800"
                       />
                     </div>
                   </div>

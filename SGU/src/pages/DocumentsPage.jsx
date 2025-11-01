@@ -14,11 +14,8 @@ const DocumentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState({
-    requestId: '',
     documentTypeId: '',
-    semesterId: '',
-    purpose: '',
-    studentIds: []
+    purpose: ''
   });
 
   useEffect(() => {
@@ -48,39 +45,88 @@ const DocumentsPage = () => {
     }
   };
 
+  // Tạo yêu cầu nhanh từ card (không cần form)
+  const handleQuickCreateRequest = async (documentTypeId, purpose = 'Yêu cầu tài liệu') => {
+    try {
+      const payload = {
+        documentTypeId: documentTypeId,
+        purpose: purpose
+      };
+      
+      const result = await documentsService.createDocumentRequest(payload);
+      if (result.success) {
+        toast.success('Đã đăng ký thành công');
+        fetchData(); // Refresh danh sách
+      } else {
+        // Xử lý trường hợp đã đăng ký rồi
+        if (result.message && result.message.includes('already_requested') || 
+            result.message && result.message.includes('đã tạo')) {
+          toast.error('Đã đăng ký loại giấy này rồi');
+        } else {
+          toast.error(result.message || 'Có lỗi xảy ra khi đăng ký');
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi đăng ký:', error);
+      // Kiểm tra nếu là lỗi đã đăng ký rồi
+      if (error.message && error.message.includes('already_requested')) {
+        toast.error('Đã đăng ký loại giấy này rồi');
+      } else {
+        toast.error('Có lỗi xảy ra khi đăng ký');
+      }
+    }
+  };
+
+  // Tạo yêu cầu từ form (với mục đích tùy chỉnh)
   const handleCreateRequest = async () => {
-    if (!createForm.requestId || !createForm.documentTypeId || !createForm.semesterId || !createForm.purpose) {
-      toast.error('Vui lòng điền đầy đủ thông tin');
+    // Validation - bỏ semesterId, backend tự lấy học kỳ active
+    if (!createForm.documentTypeId || !createForm.purpose) {
+      toast.error('Vui lòng điền đầy đủ thông tin (Loại tài liệu và Mục đích)');
       return;
     }
 
     try {
-      const result = await documentsService.createDocumentRequest(createForm);
+      // Không gửi requestId và semesterId - backend tự sinh/tự lấy
+      const payload = {
+        documentTypeId: createForm.documentTypeId,
+        purpose: createForm.purpose
+      };
+      
+      const result = await documentsService.createDocumentRequest(payload);
       if (result.success) {
         toast.success('Tạo yêu cầu tài liệu thành công');
         setShowCreateForm(false);
         setCreateForm({
-          requestId: '',
           documentTypeId: '',
-          semesterId: '',
-          purpose: '',
-          studentIds: []
+          purpose: ''
         });
         fetchData(); // Refresh danh sách
       } else {
-        toast.error(result.message);
+        // Xử lý trường hợp đã đăng ký rồi
+        if (result.message && result.message.includes('already_requested') || 
+            result.message && result.message.includes('đã tạo')) {
+          toast.error('Đã đăng ký loại giấy này rồi');
+        } else {
+          toast.error(result.message || 'Có lỗi xảy ra khi tạo yêu cầu');
+        }
       }
     } catch (error) {
       console.error('Lỗi tạo yêu cầu:', error);
-      toast.error('Có lỗi xảy ra khi tạo yêu cầu');
+      if (error.message && error.message.includes('already_requested')) {
+        toast.error('Đã đăng ký loại giấy này rồi');
+      } else {
+        toast.error('Có lỗi xảy ra khi tạo yêu cầu');
+      }
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'available': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       case 'processing': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       case 'approved': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
@@ -89,7 +135,9 @@ const DocumentsPage = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'approved': return <CheckCircle className="h-4 w-4" />;
+      case 'pending': return <Clock className="h-4 w-4" />;
       case 'processing': return <Clock className="h-4 w-4" />;
+      case 'completed': return <CheckCircle className="h-4 w-4" />;
       case 'rejected': return <XCircle className="h-4 w-4" />;
       default: return <AlertCircle className="h-4 w-4" />;
     }
@@ -98,7 +146,9 @@ const DocumentsPage = () => {
   const getStatusText = (status) => {
     switch (status) {
       case 'approved': return 'Đã duyệt';
+      case 'pending': return 'Đang xử lý';
       case 'processing': return 'Đang xử lý';
+      case 'completed': return 'Hoàn thành';
       case 'rejected': return 'Từ chối';
       default: return 'Chưa xác định';
     }
@@ -136,23 +186,22 @@ const DocumentsPage = () => {
         <TabsList>
           <TabsTrigger value="types">Loại giấy tờ</TabsTrigger>
           <TabsTrigger value="requests">Yêu cầu của tôi</TabsTrigger>
-          <TabsTrigger value="history">Lịch sử</TabsTrigger>
         </TabsList>
 
         <TabsContent value="types" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {documentTypes.map((docType) => (
               <Card 
-                key={docType.documentTypeId || docType.id} 
+                key={docType.typeId || docType.documentTypeId || docType.id} 
                 className="hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={() => setSelectedDocument(docType)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <CardTitle className="text-lg">{docType.name}</CardTitle>
+                      <CardTitle className="text-lg">{docType.typeName || docType.name}</CardTitle>
                       <CardDescription className="text-sm">
-                        {docType.description}
+                        {docType.description || 'Không có mô tả'}
                       </CardDescription>
                     </div>
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
@@ -163,7 +212,9 @@ const DocumentsPage = () => {
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600 dark:text-gray-400">Thời gian xử lý:</span>
-                    <span className="text-gray-900 dark:text-black">{docType.processingDays} ngày</span>
+                    <span className="text-gray-900 dark:text-black">
+                      {docType.processingTime || docType.processingDays || 'N/A'} ngày
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600 dark:text-gray-400">Số lượng tối đa:</span>
@@ -172,7 +223,16 @@ const DocumentsPage = () => {
                     </span>
                   </div>
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <Button variant="outline" className="w-full" size="sm" onClick={() => setShowCreateForm(true)}>
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent card onClick
+                        const typeId = docType.typeId || docType.documentTypeId;
+                        handleQuickCreateRequest(typeId, `Yêu cầu ${docType.typeName || docType.name}`);
+                      }}
+                    >
                       Đăng ký
                     </Button>
                   </div>
@@ -245,23 +305,6 @@ const DocumentsPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="history" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Lịch sử đăng ký</CardTitle>
-              <CardDescription>
-                Xem lịch sử tất cả các yêu cầu giấy tờ đã gửi
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Lịch sử đăng ký sẽ được hiển thị ở đây</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Document Detail Modal */}
@@ -271,8 +314,8 @@ const DocumentsPage = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>{selectedDocument.name}</CardTitle>
-                  <CardDescription>{selectedDocument.description}</CardDescription>
+                  <CardTitle>{selectedDocument.typeName || selectedDocument.name}</CardTitle>
+                  <CardDescription>{selectedDocument.description || 'Không có mô tả'}</CardDescription>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -287,7 +330,9 @@ const DocumentsPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Thời gian xử lý</label>
-                  <p className="text-gray-900 dark:text-black">{selectedDocument.processingTime}</p>
+                  <p className="text-gray-900 dark:text-black">
+                    {selectedDocument.processingTime || selectedDocument.processingDays || 'N/A'} ngày
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phí</label>
@@ -313,7 +358,7 @@ const DocumentsPage = () => {
                 </div>
               </div>
               
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              {/* <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <h3 className="font-semibold text-gray-900 dark:text-black mb-2">
                   Hướng dẫn đăng ký:
                 </h3>
@@ -332,7 +377,7 @@ const DocumentsPage = () => {
                 <Button variant="outline" onClick={() => setSelectedDocument(null)}>
                   Hủy
                 </Button>
-              </div>
+              </div> */}
             </CardContent>
           </Card>
         </div>
@@ -360,17 +405,7 @@ const DocumentsPage = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">ID yêu cầu</label>
-                  <input
-                    type="text"
-                    value={createForm.requestId}
-                    onChange={(e) => setCreateForm(prev => ({ ...prev, requestId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập ID yêu cầu"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Loại tài liệu</label>
+                  <label className="text-sm font-medium text-gray-700">Loại tài liệu *</label>
                   <select
                     value={createForm.documentTypeId}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, documentTypeId: e.target.value }))}
@@ -378,28 +413,23 @@ const DocumentsPage = () => {
                   >
                     <option value="">Chọn loại tài liệu</option>
                     {documentTypes.map(type => (
-                      <option key={type.id} value={type.id}>{type.name}</option>
+                      <option key={type.typeId || type.documentTypeId} value={type.typeId || type.documentTypeId}>
+                        {type.typeName || type.name}
+                      </option>
                     ))}
                   </select>
+                  {documentTypes.length === 0 && (
+                    <p className="text-xs text-gray-500">Đang tải danh sách loại tài liệu...</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Học kỳ</label>
-                  <input
-                    type="text"
-                    value={createForm.semesterId}
-                    onChange={(e) => setCreateForm(prev => ({ ...prev, semesterId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập ID học kỳ"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Mục đích</label>
-                  <input
-                    type="text"
+                  <label className="text-sm font-medium text-gray-700">Mục đích *</label>
+                  <textarea
                     value={createForm.purpose}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, purpose: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nhập mục đích sử dụng"
+                    rows={3}
                   />
                 </div>
               </div>

@@ -20,19 +20,49 @@ class DocumentsService {
     }
   }
 
-  // Tạo yêu cầu tài liệu mới
+  // Tạo yêu cầu tài liệu mới (Student self-service endpoint)
   async createDocumentRequest(requestData) {
     try {
-      const response = await apiService.post(API_ENDPOINTS.CREATE_DOCUMENT_REQUEST, requestData);
+      // Dùng endpoint /student/my-document-requests/ (POST) - tự sinh requestId, không cần gửi requestId
+      const response = await apiService.post(API_ENDPOINTS.MY_DOCUMENT_REQUESTS, requestData);
+      
+      // Kiểm tra nếu response là "already_requested"
+      if (response.message === 'already_requested') {
+        return {
+          success: false,
+          message: 'already_requested',
+          data: {
+            requestId: response.requestId,
+            status: response.status
+          }
+        };
+      }
+      
       return {
         success: true,
         message: response.message || 'Tạo yêu cầu tài liệu thành công',
         data: {
-          requestId: response.requestId
+          requestId: response.requestId || response.id,
+          queuePosition: response.queuePosition,
+          status: response.status
         }
       };
     } catch (error) {
       console.error('Create document request error:', error);
+      // Xử lý trường hợp đã yêu cầu rồi từ response body
+      if (error.response && error.response.data && error.response.data.message === 'already_requested') {
+        return {
+          success: false,
+          message: 'already_requested'
+        };
+      }
+      // Kiểm tra error message
+      if (error.message && error.message.includes('already_requested')) {
+        return {
+          success: false,
+          message: 'already_requested'
+        };
+      }
       return {
         success: false,
         message: error.message || 'Có lỗi xảy ra khi tạo yêu cầu tài liệu'

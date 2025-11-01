@@ -21,30 +21,51 @@ class ApiService {
       const response = await fetch(url, defaultOptions);
       console.log('📡 Response status:', response.status);
       console.log('📡 Response ok:', response.ok);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ API Error:', errorData);
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
 
+      // 🧩 Parse JSON nếu có thể
+      let data = null;
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        console.log('✅ API Response data:', data);
-        return data;
+        data = await response.json().catch(() => null);
+      } else {
+        data = await response.text().catch(() => null);
       }
-      
-      const textData = await response.text();
-      console.log('✅ API Response text:', textData);
-      return textData;
+
+      // ⚠️ Kiểm tra lỗi Authentication
+      if (
+        (data && data.error === 'Authentication required') ||
+        response.status === 401 ||
+        response.status === 403
+      ) {
+        console.warn('⚠️ Session expired or unauthorized. Auto logout triggered.');
+        await authService.logout();
+
+        // 👉 Chuyển hướng về trang login
+        window.location.href = '/';
+        return Promise.reject(new Error('Authentication required - auto logout'));
+      }
+
+      // ❌ Nếu không ok thì ném lỗi khác
+      if (!response.ok) {
+        console.error('❌ API Error:', data);
+        const error = new Error(
+          (data && (data.error || data.message)) || `HTTP error! status: ${response.status}`
+        );
+        error.response = response;
+        error.status = response.status;
+        error.data = data;
+        throw error;
+      }
+
+      console.log('✅ API Response data:', data);
+      return data;
     } catch (error) {
       console.error('❌ API request error:', error);
       throw error;
     }
   }
 
-  // GET request
+  // GET
   async get(endpoint, options = {}) {
     return this.request(endpoint, {
       method: 'GET',
@@ -52,7 +73,7 @@ class ApiService {
     });
   }
 
-  // POST request
+  // POST
   async post(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       method: 'POST',
@@ -61,7 +82,7 @@ class ApiService {
     });
   }
 
-  // PUT request
+  // PUT
   async put(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       method: 'PUT',
@@ -70,7 +91,7 @@ class ApiService {
     });
   }
 
-  // DELETE request
+  // DELETE
   async delete(endpoint, options = {}) {
     return this.request(endpoint, {
       method: 'DELETE',

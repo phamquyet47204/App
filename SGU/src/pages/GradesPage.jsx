@@ -21,17 +21,29 @@ const GradesPage = () => {
     const fetchGrades = async () => {
       try {
         setLoading(true);
+        console.log('📊 Fetching grades...');
         const result = await gradesService.getMyGrades();
+        console.log('📊 Grades result:', result);
+        
         if (result.success) {
-          setSubjects(result.data);
+          const grades = result.data.grades || [];
+          console.log('📊 Grades array:', grades);
+          console.log('📊 Grades count:', grades.length);
+          
+          setSubjects(grades);
           // Tính toán thống kê tổng quan
-          const stats = calculateOverallStats(result.data);
+          const stats = calculateOverallStats(grades, result.data);
           setOverallStats(stats);
+          
+          if (grades.length === 0) {
+            console.warn('⚠️ No grades found');
+          }
         } else {
-          console.error('Lỗi tải điểm:', result.message);
+          console.error('❌ Lỗi tải điểm:', result.message);
         }
       } catch (error) {
-        console.error('Lỗi tải điểm:', error);
+        console.error('❌ Lỗi tải điểm:', error);
+        console.error('❌ Error details:', error.response || error);
       } finally {
         setLoading(false);
       }
@@ -40,21 +52,33 @@ const GradesPage = () => {
     fetchGrades();
   }, []);
 
-  const calculateOverallStats = (grades) => {
+  const calculateOverallStats = (grades, data = {}) => {
     if (!grades || grades.length === 0) {
-      return { gpa: 0, totalCredits: 0, completedCredits: 0, averageGrade: 0 };
+      return { 
+        gpa: data.gpa || 0, 
+        totalCredits: data.totalCredits || 0, 
+        completedCredits: 0, 
+        averageGrade: 0 
+      };
     }
 
-    const totalCredits = grades.reduce((sum, grade) => sum + (grade.subject?.credits || 0), 0);
-    const completedCredits = grades.filter(grade => grade.isPassed).reduce((sum, grade) => sum + (grade.subject?.credits || 0), 0);
-    const averageGrade = grades.reduce((sum, grade) => sum + (grade.totalScore || 0), 0) / grades.length;
+    // Sử dụng GPA và totalCredits từ backend nếu có
+    const totalCredits = data.totalCredits || grades.reduce((sum, grade) => sum + (grade.credits || 0), 0);
+    const completedCredits = grades.filter(grade => grade.isPassed).reduce((sum, grade) => sum + (grade.credits || 0), 0);
+    const averageGrade = grades.reduce((sum, grade) => sum + (grade.averageScore || 0), 0) / grades.length;
     
-    // Tính GPA từ gradePoints
-    const gpa = grades.reduce((sum, grade) => {
-      const gradePoint = grade.gradePoints || 0;
-      const credits = grade.subject?.credits || 0;
-      return sum + (gradePoint * credits);
-    }, 0) / totalCredits;
+    // Tính GPA từ gradePoint (chỉ các môn đã pass)
+    const passedGrades = grades.filter(g => g.isPassed);
+    let gpa = data.gpa || 0;
+    if (!gpa && passedGrades.length > 0) {
+      const totalPoints = passedGrades.reduce((sum, grade) => {
+        const gradePoint = grade.gradePoint || 0;
+        const credits = grade.credits || 0;
+        return sum + (gradePoint * credits);
+      }, 0);
+      const passedCredits = passedGrades.reduce((sum, grade) => sum + (grade.credits || 0), 0);
+      gpa = passedCredits > 0 ? totalPoints / passedCredits : 0;
+    }
 
     return {
       gpa: gpa || 0,
@@ -175,6 +199,19 @@ const GradesPage = () => {
         </TabsList>
 
         <TabsContent value="subjects" className="space-y-4">
+          {subjects.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Award className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-2">
+                  Chưa có điểm số
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Bạn chưa có điểm số nào. Vui lòng liên hệ với giáo viên để biết thêm chi tiết.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {subjects.map((subject) => (
               <Card 
@@ -185,9 +222,9 @@ const GradesPage = () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <CardTitle className="text-lg">{subject.subject?.subjectName || subject.subjectName}</CardTitle>
+                      <CardTitle className="text-lg">{subject.subject || subject.subjectName}</CardTitle>
                       <CardDescription className="text-sm">
-                        {subject.courseClass?.courseName || subject.courseClass} • {subject.semester?.semesterName || subject.semester}
+                        {subject.courseName || subject.courseClass?.courseName || subject.courseCode} • {subject.semester || subject.semesterName}
                       </CardDescription>
                     </div>
                     <Badge className={getGradeBadgeColor(subject.letterGrade)}>
@@ -198,8 +235,8 @@ const GradesPage = () => {
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Điểm tổng kết</span>
-                    <span className={`text-2xl font-bold ${getGradeColor(subject.totalScore)}`}>
-                      {subject.totalScore?.toFixed(1) || 'N/A'}
+                    <span className={`text-2xl font-bold ${getGradeColor(subject.averageScore)}`}>
+                      {subject.averageScore?.toFixed(1) || 'N/A'}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -213,9 +250,23 @@ const GradesPage = () => {
               </Card>
             ))}
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="detailed" className="space-y-4">
+          {subjects.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Award className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-2">
+                  Chưa có điểm số
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Bạn chưa có điểm số nào. Vui lòng liên hệ với giáo viên để biết thêm chi tiết.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
           <Card>
             <CardHeader>
               <CardTitle>Chi tiết điểm số</CardTitle>
@@ -230,15 +281,15 @@ const GradesPage = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-black">
-                          {subject.subject?.subjectName || subject.subjectName} ({subject.subject?.subjectCode || subject.subjectCode})
+                          {subject.subject || subject.subjectName} ({subject.subjectCode})
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {subject.semester?.semesterName || subject.semester}
+                          {subject.semester || subject.semesterName}
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className={`text-2xl font-bold ${getGradeColor(subject.totalScore)}`}>
-                          {subject.totalScore?.toFixed(1) || 'N/A'}
+                        <div className={`text-2xl font-bold ${getGradeColor(subject.averageScore)}`}>
+                          {subject.averageScore?.toFixed(1) || 'N/A'}
                         </div>
                         <Badge className={getGradeBadgeColor(subject.letterGrade)}>
                           {subject.letterGrade}
@@ -272,9 +323,23 @@ const GradesPage = () => {
               </div>
             </CardContent>
           </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="transcript" className="space-y-4">
+          {subjects.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Award className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-2">
+                  Chưa có điểm số
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Bạn chưa có điểm số nào. Vui lòng liên hệ với giáo viên để biết thêm chi tiết.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
           <Card>
             <CardHeader>
               <CardTitle>Bảng điểm</CardTitle>
@@ -297,11 +362,11 @@ const GradesPage = () => {
                   <tbody>
                     {subjects.map((subject) => (
                       <tr key={subject.gradeId || subject.id} className="border-b border-gray-200 dark:border-gray-700">
-                        <td className="py-3 px-4 text-gray-900 dark:text-black">{subject.subject?.subjectName || subject.subjectName}</td>
-                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{subject.subject?.subjectCode || subject.subjectCode}</td>
-                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{subject.subject?.credits || subject.credits}</td>
-                        <td className={`py-3 px-4 font-semibold ${getGradeColor(subject.totalScore)}`}>
-                          {subject.totalScore?.toFixed(1) || 'N/A'}
+                        <td className="py-3 px-4 text-gray-900 dark:text-black">{subject.subject || subject.subjectName}</td>
+                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{subject.subjectCode}</td>
+                        <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{subject.credits}</td>
+                        <td className={`py-3 px-4 font-semibold ${getGradeColor(subject.averageScore)}`}>
+                          {subject.averageScore?.toFixed(1) || 'N/A'}
                         </td>
                         <td className="py-3 px-4">
                           <Badge className={getGradeBadgeColor(subject.letterGrade)}>
@@ -315,6 +380,7 @@ const GradesPage = () => {
               </div>
             </CardContent>
           </Card>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -325,8 +391,8 @@ const GradesPage = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>{selectedSubject.subject?.subjectName || selectedSubject.subjectName}</CardTitle>
-                  <CardDescription>{selectedSubject.subject?.subjectCode || selectedSubject.subjectCode} • {selectedSubject.semester?.semesterName || selectedSubject.semester}</CardDescription>
+                  <CardTitle>{selectedSubject.subject || selectedSubject.subjectName}</CardTitle>
+                  <CardDescription>{selectedSubject.subjectCode} • {selectedSubject.semester || selectedSubject.semesterName}</CardDescription>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -341,14 +407,14 @@ const GradesPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Tín chỉ</label>
-                  <p className="text-gray-900 dark:text-black">{selectedSubject.subject?.credits || selectedSubject.credits}</p>
+                  <p className="text-gray-900 dark:text-black">{selectedSubject.credits}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Điểm tổng kết</label>
-                  <p className={`text-2xl font-bold ${getGradeColor(selectedSubject.totalScore)}`}>
-                    {selectedSubject.totalScore?.toFixed(1) || 'N/A'}
-                  </p>
-                </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Điểm tổng kết</label>
+                    <p className={`text-2xl font-bold ${getGradeColor(selectedSubject.averageScore)}`}>
+                      {selectedSubject.averageScore?.toFixed(1) || 'N/A'}
+                    </p>
+                  </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Chi tiết điểm</label>
@@ -376,6 +442,24 @@ const GradesPage = () => {
                     <span className={`font-semibold ${getGradeColor(selectedSubject.finalScore)}`}>
                       {selectedSubject.finalScore?.toFixed(1) || 'N/A'}
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <span className="text-sm font-medium text-gray-900 dark:text-black">Điểm trung bình</span>
+                    <span className={`font-semibold ${getGradeColor(selectedSubject.averageScore)}`}>
+                      {selectedSubject.averageScore?.toFixed(1) || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <span className="text-sm font-medium text-gray-900 dark:text-black">Điểm hệ 4</span>
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">
+                      {selectedSubject.gradePoint?.toFixed(1) || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded">
+                    <span className="text-sm font-medium text-gray-900 dark:text-black">Trạng thái</span>
+                    <Badge className={selectedSubject.isPassed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                      {selectedSubject.isPassed ? 'Đạt' : 'Không đạt'}
+                    </Badge>
                   </div>
                 </div>
               </div>

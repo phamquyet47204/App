@@ -420,40 +420,161 @@ def delete_course_class(request, class_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def register_course(request):
+    """
+    Đăng ký môn học cho student
+    - Tự động lấy student từ user hiện tại
+    - Tự sinh registrationId nếu không có
+    - Validate các điều kiện (đã đăng ký, hết chỗ, prerequisites, schedule conflict, registration period)
+    """
     try:
         data = json.loads(request.body)
-
-        # Validate required ids
-        registration_id = data.get('registrationId')
-        student_id = data.get('studentId')
+        
+        # Lấy student từ user hiện tại (student chỉ có thể đăng ký cho mình)
+        try:
+            student = Student.objects.get(user=request.user)
+        except Student.DoesNotExist:
+            return JsonResponse({'error': 'Student profile not found. Please ensure you are logged in as a student.'}, status=404)
+        
+        # Validate required fields
         course_class_id = data.get('courseClassId')
-        if not registration_id or not student_id or not course_class_id:
-            return JsonResponse({'error': 'registrationId, studentId, and courseClassId are required'}, status=400)
-
-        student = Student.objects.get(studentId=student_id)
-        course_class = CourseClass.objects.get(courseClassId=course_class_id)
-
+        if not course_class_id:
+            return JsonResponse({'error': 'courseClassId is required'}, status=400)
+        
+        try:
+            course_class = CourseClass.objects.get(courseClassId=course_class_id)
+        except CourseClass.DoesNotExist:
+            return JsonResponse({'error': 'Course class not found'}, status=404)
+        
         # Derive semester from payload or course_class
         semester_id = data.get('semesterId')
-        semester = Semester.objects.get(semesterId=semester_id) if semester_id else course_class.semester
-
+        if semester_id:
+            try:
+                semester = Semester.objects.get(semesterId=semester_id)
+            except Semester.DoesNotExist:
+                return JsonResponse({'error': 'Semester not found'}, status=404)
+        else:
+            semester = course_class.semester
+        
+        # Kiểm tra đã đăng ký chưa
+        existing = CourseRegistration.objects.filter(
+            student=student,
+            courseClass=course_class,
+            semester=semester,
+            status__in=['registered', 'pending']
+        ).first()
+        if existing:
+            return JsonResponse({
+                'error': 'Bạn đã đăng ký môn học này rồi',
+                'registrationId': existing.registrationId
+            }, status=400)
+        
+        # Kiểm tra còn chỗ không
+        if course_class.currentStudents >= course_class.maxStudents:
+            return JsonResponse({'error': 'Lớp học đã đầy'}, status=400)
+        
+        # Kiểm tra prerequisites
+        prerequisites = course_class.subject.prerequisites.all()
+        if prerequisites.exists():
+            for prereq in prerequisites:
+                passed_grade = Grade.objects.filter(
+                    student=student,
+                    subject=prereq,
+                    isPassed=True
+                ).exists()
+                if not passed_grade:
+                    return JsonResponse({
+                        'error': f'Chưa đáp ứng môn tiên quyết: {prereq.subjectName} ({prereq.subjectCode})',
+                        'missingPrerequisite': {
+                            'subjectCode': prereq.subjectCode,
+                            'subjectName': prereq.subjectName
+                        }
+                    }, status=400)
+        
+        # Kiểm tra schedule conflict với các môn đã đăng ký
+        current_registrations = CourseRegistration.objects.filter(
+            student=student,
+            semester=semester,
+            status='registered'
+        ).select_related('courseClass')
+        
+        conflicts = []
+        for reg in current_registrations:
+            registered_class = reg.courseClass
+            
+            # Kiểm tra conflict bằng cách so sánh schedule DateTimeField
+            if course_class.schedule and registered_class.schedule:
+                # So sánh datetime - nếu cùng ngày giờ thì conflict
+                if course_class.schedule == registered_class.schedule:
+                    conflicts.append({
+                        'courseCode': registered_class.courseCode,
+                        'courseName': registered_class.courseName,
+                        'schedule': str(registered_class.schedule),
+                        'reason': 'Cùng lịch học (schedule)'
+                    })
+            
+            # Nếu không có schedule, kiểm tra conflict dựa trên phòng học
+            # Nếu cùng phòng, có thể cùng thời gian -> conflict
+            elif course_class.room and registered_class.room:
+                if course_class.room == registered_class.room:
+                    # Cảnh báo nếu cùng phòng (có thể conflict)
+                    # Nhưng chỉ chặn nếu có thông tin schedule hoặc có rule rõ ràng
+                    # Tạm thời chỉ cảnh báo, không chặn nếu không có schedule
+                    pass
+        
+        if conflicts:
+            conflict_details = ', '.join([f"{c['courseCode']}" for c in conflicts])
+            return JsonResponse({
+                'error': f'Xung đột lịch học với môn đã đăng ký: {conflict_details}',
+                'conflicts': conflicts
+            }, status=400)
+        
+        # Kiểm tra registration period
+        if semester.registrationStart and semester.registrationEnd:
+            now = timezone.now()
+            if not (semester.registrationStart <= now <= semester.registrationEnd):
+                return JsonResponse({
+                    'error': 'Không trong thời gian đăng ký',
+                    'registrationStart': semester.registrationStart.isoformat() if semester.registrationStart else None,
+                    'registrationEnd': semester.registrationEnd.isoformat() if semester.registrationEnd else None
+                }, status=400)
+        
+        # Auto-generate registrationId nếu không có
+        registration_id = data.get('registrationId')
+        if not registration_id:
+            base_prefix = 'REG'
+            next_num = CourseRegistration.objects.count() + 1
+            while True:
+                candidate_id = f"{base_prefix}{next_num:06d}"
+                if not CourseRegistration.objects.filter(registrationId=candidate_id).exists():
+                    registration_id = candidate_id
+                    break
+                next_num += 1
+        
+        # Tạo registration
         registration = CourseRegistration.objects.create(
             registrationId=registration_id,
             student=student,
             courseClass=course_class,
             semester=semester,
-            registrationDate=datetime.now().date()
+            registrationDate=timezone.now().date(),
+            status='registered'
         )
-        return JsonResponse({'message': 'Course registered', 'id': registration.registrationId})
-    except Student.DoesNotExist:
-        return JsonResponse({'error': 'Student not found'}, status=404)
-    except CourseClass.DoesNotExist:
-        return JsonResponse({'error': 'Course class not found'}, status=404)
-    except Semester.DoesNotExist:
-        return JsonResponse({'error': 'Semester not found'}, status=404)
+        
+        # Update currentStudents count
+        course_class.currentStudents += 1
+        course_class.save()
+        
+        return JsonResponse({
+            'message': 'Course registered successfully',
+            'registrationId': registration.registrationId,
+            'status': registration.status
+        }, status=201)
+        
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON body'}, status=400)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=400)
 
 @require_permission('view_students')
@@ -473,6 +594,41 @@ def list_registrations(request):
     return JsonResponse({'registrations': data})
 
 # ============ GRADE CRUD ============
+def calculate_grade_from_score(average_score):
+    """
+    Tính letterGrade và gradePoint từ average_score (thang điểm 10)
+    Quy tắc:
+    - 9.0-10.0: A (4.0)
+    - 8.5-8.9: B+ (3.5)
+    - 8.0-8.4: B (3.0)
+    - 7.5-7.9: C+ (2.5)
+    - 7.0-7.4: C (2.0)
+    - 6.5-6.9: D+ (1.5)
+    - 6.0-6.4: D (1.0)
+    - < 6.0: F (0.0)
+    """
+    if average_score is None:
+        return None, None, None
+    
+    score = float(average_score)
+    
+    if score >= 9.0:
+        return 'A', 4.0, True
+    elif score >= 8.5:
+        return 'B+', 3.5, True
+    elif score >= 8.0:
+        return 'B', 3.0, True
+    elif score >= 7.5:
+        return 'C+', 2.5, True
+    elif score >= 7.0:
+        return 'C', 2.0, True
+    elif score >= 6.5:
+        return 'D+', 1.5, True
+    elif score >= 6.0:
+        return 'D', 1.0, True
+    else:
+        return 'F', 0.0, False
+
 @require_permission('input_grades')
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -485,6 +641,25 @@ def create_grade(request):
         course_class = CourseClass.objects.get(courseClassId=data['courseClassId'])
         semester = Semester.objects.get(semesterId=data['semesterId'])
         
+        # Tính letterGrade và gradePoint từ average_score nếu có
+        average_score = data.get('averageScore')
+        letter_grade = data.get('letterGrade')
+        grade_point = data.get('gradePoint')
+        is_passed = data.get('isPassed')
+        
+        # Nếu có average_score và chưa có letterGrade/gradePoint, tự động tính
+        if average_score is not None:
+            calculated_letter, calculated_point, calculated_passed = calculate_grade_from_score(average_score)
+            if calculated_letter:
+                # Ưu tiên dùng giá trị đã tính từ average_score
+                letter_grade = calculated_letter
+                grade_point = calculated_point
+                is_passed = calculated_passed
+        
+        # Validate required fields
+        if not letter_grade or grade_point is None or is_passed is None:
+            return JsonResponse({'error': 'letterGrade, gradePoint, and isPassed are required'}, status=400)
+        
         grade = Grade.objects.create(
             gradeId=data['gradeId'],
             student=student,
@@ -495,13 +670,15 @@ def create_grade(request):
             assginmentscore=data.get('assignmentScore'),
             midterm_score=data.get('midtermScore'),
             final_score=data.get('finalScore'),
-            average_score=data.get('averageScore'),
-            letterGrade=data['letterGrade'],
-            gradePoint=data['gradePoint'],
-            isPassed=data['isPassed']
+            average_score=average_score,
+            letterGrade=letter_grade,
+            gradePoint=grade_point,
+            isPassed=is_passed
         )
         return JsonResponse({'message': 'Grade created', 'id': grade.gradeId})
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=400)
 
 @require_http_methods(["GET"])
@@ -593,7 +770,15 @@ def create_document_request(request):
             student_obj = Student.objects.get(studentId=student_id)
 
         document_type = DocumentType.objects.get(documentTypeId=data['documentTypeId'])
-        semester = Semester.objects.get(semesterId=data['semesterId'])
+        
+        # Tự động lấy học kỳ active nếu không có semesterId
+        semester_id = data.get('semesterId')
+        if semester_id:
+            semester = Semester.objects.get(semesterId=semester_id)
+        else:
+            semester = Semester.objects.filter(status='active').first()
+            if not semester:
+                return JsonResponse({'error': 'No active semester found'}, status=400)
 
         # Nếu đã có yêu cầu tương tự (đang chờ/đã duyệt/đã hoàn tất), trả về bản ghi hiện có
         existing = DocumentRequest.objects.filter(
@@ -852,9 +1037,10 @@ def list_teachers(request):
 @csrf_exempt
 @require_http_methods(["GET"])
 def list_document_types(request):
-    """Xem loại tài liệu có thể yêu cầu"""
+    """Xem loại tài liệu có thể yêu cầu - chỉ trả về các loại đang active"""
     try:
-        document_types = DocumentType.objects.all()
+        # Chỉ lấy các loại tài liệu đang active
+        document_types = DocumentType.objects.filter(status='active')
         data = [{
             'typeId': dt.documentTypeId,
             'typeName': dt.name,
