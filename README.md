@@ -1,143 +1,193 @@
-# SƠ ĐỒ CHỨC NĂNG BFD MỨC 2
-## HỆ THỐNG QUẢN LÝ ĐẠI HỌC
+# SƠ ĐỒ CHỨC NĂNG BFD MỨC 2 - MERMAID
 
+```mermaid
+graph TD
+    ROOT["HỆ THỐNG QUẢN LÝ ĐẠI HỌC"]
+    
+    %% Chức năng mức 1
+    F1["1. Quản lý Người dùng"]
+    F2["2. Quản lý Học vụ"]
+    F3["3. Đăng ký Học phần"]
+    F4["4. Quản lý Điểm số"]
+    F5["5. Quản lý Học phí"]
+    F6["6. Quản lý Tài liệu"]
+    F7["7. Quản lý Thông báo"]
+    F8["8. Báo cáo & Thống kê"]
+    
+    %% Chức năng mức 2 - Quản lý Người dùng
+    F1_1["1.1 Quản lý Sinh viên"]
+    F1_2["1.2 Quản lý Giáo viên"]
+    F1_3["1.3 Quản lý Admin"]
+    F1_4["1.4 Xác thực & Phân quyền"]
+    
+    %% Chức năng mức 2 - Quản lý Học vụ
+    F2_1["2.1 Quản lý Khoa"]
+    F2_2["2.2 Quản lý Ngành học"]
+    F2_3["2.3 Quản lý Môn học"]
+    F2_4["2.4 Quản lý Lớp học"]
+    F2_5["2.5 Quản lý Học kỳ"]
+    
+    %% Chức năng mức 2 - Đăng ký Học phần
+    F3_1["3.1 Đăng ký học phần"]
+    F3_2["3.2 Hủy đăng ký"]
+    F3_3["3.3 Xem lịch học"]
+    F3_4["3.4 Kiểm tra tiên quyết"]
+    
+    %% Chức năng mức 2 - Quản lý Điểm số
+    F4_1["4.1 Nhập điểm"]
+    F4_2["4.2 Cập nhật điểm"]
+    F4_3["4.3 Xem điểm"]
+    F4_4["4.4 Tính GPA"]
+    F4_5["4.5 Xuất báo cáo điểm"]
+    
+    %% Chức năng mức 2 - Quản lý Học phí
+    F5_1["5.1 Tính học phí"]
+    F5_2["5.2 Thanh toán học phí"]
+    F5_3["5.3 Xem lịch sử thanh toán"]
+    F5_4["5.4 Quản lý công nợ"]
+    
+    %% Chức năng mức 2 - Quản lý Tài liệu
+    F6_1["6.1 Yêu cầu tài liệu"]
+    F6_2["6.2 Duyệt yêu cầu"]
+    F6_3["6.3 Quản lý loại tài liệu"]
+    F6_4["6.4 Theo dõi trạng thái"]
+    
+    %% Chức năng mức 2 - Quản lý Thông báo
+    F7_1["7.1 Tạo thông báo"]
+    F7_2["7.2 Gửi thông báo"]
+    F7_3["7.3 Xem thông báo"]
+    F7_4["7.4 Quản lý đối tượng nhận"]
+    
+    %% Chức năng mức 2 - Báo cáo & Thống kê
+    F8_1["8.1 Báo cáo học tập"]
+    F8_2["8.2 Báo cáo tài chính"]
+    F8_3["8.3 Thống kê đăng ký"]
+    F8_4["8.4 Xuất báo cáo"]
+    
+    %% Kết nối từ ROOT đến mức 1
+    ROOT --> F1
+    ROOT --> F2
+    ROOT --> F3
+    ROOT --> F4
+    ROOT --> F5
+    ROOT --> F6
+    ROOT --> F7
+    ROOT --> F8
+    
+    %% Kết nối từ mức 1 đến mức 2
+    F1 --> F1_1
+    F1 --> F1_2
+    F1 --> F1_3
+    F1 --> F1_4
+    
+    F2 --> F2_1
+    F2 --> F2_2
+    F2 --> F2_3
+    F2 --> F2_4
+    F2 --> F2_5
+    
+    F3 --> F3_1
+    F3 --> F3_2
+    F3 --> F3_3
+    F3 --> F3_4
+    
+    F4 --> F4_1
+    F4 --> F4_2
+    F4 --> F4_3
+    F4 --> F4_4
+    F4 --> F4_5
+    
+    F5 --> F5_1
+    F5 --> F5_2
+    F5 --> F5_3
+    F5 --> F5_4
+    
+    F6 --> F6_1
+    F6 --> F6_2
+    F6 --> F6_3
+    F6 --> F6_4
+    
+    F7 --> F7_1
+    F7 --> F7_2
+    F7 --> F7_3
+    F7 --> F7_4
+    
+    F8 --> F8_1
+    F8 --> F8_2
+    F8 --> F8_3
+    F8 --> F8_4
+    
+    %% Styling
+    classDef rootClass fill:#FFE5B4,stroke:#2A4E6C,stroke-width:3px
+    classDef level1Class fill:#B8E6B8,stroke:#2A4E6C,stroke-width:2px
+    classDef level2Class fill:#E8F4F8,stroke:#2A4E6C,stroke-width:1px
+    
+    class ROOT rootClass
+    class F1,F2,F3,F4,F5,F6,F7,F8 level1Class
+    class F1_1,F1_2,F1_3,F1_4,F2_1,F2_2,F2_3,F2_4,F2_5,F3_1,F3_2,F3_3,F3_4,F4_1,F4_2,F4_3,F4_4,F4_5,F5_1,F5_2,F5_3,F5_4,F6_1,F6_2,F6_3,F6_4,F7_1,F7_2,F7_3,F7_4,F8_1,F8_2,F8_3,F8_4 level2Class
 ```
-                    ┌─────────────────────────────────────┐
-                    │     HỆ THỐNG QUẢN LÝ ĐẠI HỌC      │
-                    │        (University Management)      │
-                    └─────────────────┬───────────────────┘
-                                      │
-        ┌─────────────────────────────┼─────────────────────────────┐
-        │                             │                             │
-        ▼                             ▼                             ▼
-┌───────────────┐            ┌───────────────┐            ┌───────────────┐
-│  1. QUẢN LÝ   │            │  2. QUẢN LÝ   │            │  3. ĐĂNG KÝ   │
-│   NGƯỜI DÙNG  │            │    HỌC VỤ     │            │   HỌC PHẦN    │
-└───────┬───────┘            └───────┬───────┘            └───────┬───────┘
-        │                            │                            │
-   ┌────┼────┐                  ┌────┼────┐                  ┌────┼────┐
-   ▼    ▼    ▼                  ▼    ▼    ▼                  ▼    ▼    ▼
-┌─────┐┌─────┐┌─────┐        ┌─────┐┌─────┐┌─────┐        ┌─────┐┌─────┐┌─────┐
-│1.1  ││1.2  ││1.3  │        │2.1  ││2.2  ││2.3  │        │3.1  ││3.2  ││3.3  │
-│Sinh ││Giáo ││Xác  │        │Khoa ││Ngành││Môn  │        │Đăng ││Hủy  ││Xem  │
-│viên ││viên ││thực │        │     ││học  ││học  │        │ký   ││đăng ││lịch │
-└─────┘└─────┘└─────┘        └─────┘└─────┘└─────┘        │học  ││ký   ││học  │
-                                     │     │               │phần ││     ││     │
-                              ┌─────┐┌─────┐               └─────┘└─────┘└─────┘
-                              │2.4  ││2.5  │                      │
-                              │Lớp  ││Học  │               ┌─────┐▼
-                              │học  ││kỳ   │               │3.4  │
-                              └─────┘└─────┘               │Kiểm │
-                                                          │tra  │
-                                                          │tiên │
-                                                          │quyết│
-                                                          └─────┘
 
-        ┌─────────────────────────────┼─────────────────────────────┐
-        │                             │                             │
-        ▼                             ▼                             ▼
-┌───────────────┐            ┌───────────────┐            ┌───────────────┐
-│  4. QUẢN LÝ   │            │  5. QUẢN LÝ   │            │  6. QUẢN LÝ   │
-│   ĐIỂM SỐ     │            │   HỌC PHÍ     │            │   TÀI LIỆU    │
-└───────┬───────┘            └───────┬───────┘            └───────┬───────┘
-        │                            │                            │
-   ┌────┼────┐                  ┌────┼────┐                  ┌────┼────┐
-   ▼    ▼    ▼                  ▼    ▼    ▼                  ▼    ▼    ▼
-┌─────┐┌─────┐┌─────┐        ┌─────┐┌─────┐┌─────┐        ┌─────┐┌─────┐┌─────┐
-│4.1  ││4.2  ││4.3  │        │5.1  ││5.2  ││5.3  │        │6.1  ││6.2  ││6.3  │
-│Nhập ││Cập  ││Xem  │        │Tính ││Thanh││Xem  │        │Yêu  ││Duyệt││Quản │
-│điểm ││nhật ││điểm │        │học  ││toán ││lịch │        │cầu  ││yêu  ││lý   │
-└─────┘└─────┘└─────┘        │phí  ││     ││sử   │        │tài  ││cầu  ││loại │
-   │           │              └─────┘└─────┘└─────┘        │liệu ││     ││tài  │
-┌─────┐    ┌─────┐                   │                    └─────┘└─────┘│liệu │
-│4.4  │    │4.5  │            ┌─────┐▼                           │     └─────┘
-│Tính │    │Xuất │            │5.4  │                     ┌─────┐▼
-│GPA  │    │báo  │            │Quản │                     │6.4  │
-│     │    │cáo  │            │lý   │                     │Theo │
-└─────┘    └─────┘            │công │                     │dõi  │
-                              │nợ   │                     │trạng│
-                              └─────┘                     │thái │
-                                                          └─────┘
+## SƠ ĐỒ DẠNG FLOWCHART
 
-        ┌─────────────────────────────┼─────────────────────────────┐
-        │                             │                             │
-        ▼                             ▼                             
-┌───────────────┐            ┌───────────────┐            
-│  7. QUẢN LÝ   │            │  8. BÁO CÁO   │            
-│   THÔNG BÁO   │            │  & THỐNG KÊ   │            
-└───────┬───────┘            └───────┬───────┘            
-        │                            │                    
-   ┌────┼────┐                  ┌────┼────┐               
-   ▼    ▼    ▼                  ▼    ▼    ▼               
-┌─────┐┌─────┐┌─────┐        ┌─────┐┌─────┐┌─────┐        
-│7.1  ││7.2  ││7.3  │        │8.1  ││8.2  ││8.3  │        
-│Tạo  ││Gửi  ││Xem  │        │Báo  ││Báo  ││Thống│        
-│thông││thông││thông│        │cáo  ││cáo  ││kê   │        
-│báo  ││báo  ││báo  │        │học  ││tài  ││đăng │        
-└─────┘└─────┘└─────┘        │tập  ││chính││ký   │        
-       │                     └─────┘└─────┘└─────┘        
-┌─────┐▼                            │                     
-│7.4  │                      ┌─────┐▼                     
-│Quản │                      │8.4  │                      
-│lý   │                      │Xuất │                      
-│đối  │                      │báo  │                      
-│tượng│                      │cáo  │                      
-│nhận │                      └─────┘                      
-└─────┘                                                   
+```mermaid
+flowchart TB
+    subgraph "HỆ THỐNG QUẢN LÝ ĐẠI HỌC"
+        subgraph "1. QUẢN LÝ NGƯỜI DÙNG"
+            A1[1.1 Quản lý Sinh viên]
+            A2[1.2 Quản lý Giáo viên]
+            A3[1.3 Quản lý Admin]
+            A4[1.4 Xác thực & Phân quyền]
+        end
+        
+        subgraph "2. QUẢN LÝ HỌC VỤ"
+            B1[2.1 Quản lý Khoa]
+            B2[2.2 Quản lý Ngành học]
+            B3[2.3 Quản lý Môn học]
+            B4[2.4 Quản lý Lớp học]
+            B5[2.5 Quản lý Học kỳ]
+        end
+        
+        subgraph "3. ĐĂNG KÝ HỌC PHẦN"
+            C1[3.1 Đăng ký học phần]
+            C2[3.2 Hủy đăng ký]
+            C3[3.3 Xem lịch học]
+            C4[3.4 Kiểm tra tiên quyết]
+        end
+        
+        subgraph "4. QUẢN LÝ ĐIỂM SỐ"
+            D1[4.1 Nhập điểm]
+            D2[4.2 Cập nhật điểm]
+            D3[4.3 Xem điểm]
+            D4[4.4 Tính GPA]
+            D5[4.5 Xuất báo cáo điểm]
+        end
+        
+        subgraph "5. QUẢN LÝ HỌC PHÍ"
+            E1[5.1 Tính học phí]
+            E2[5.2 Thanh toán học phí]
+            E3[5.3 Xem lịch sử thanh toán]
+            E4[5.4 Quản lý công nợ]
+        end
+        
+        subgraph "6. QUẢN LÝ TÀI LIỆU"
+            F1[6.1 Yêu cầu tài liệu]
+            F2[6.2 Duyệt yêu cầu]
+            F3[6.3 Quản lý loại tài liệu]
+            F4[6.4 Theo dõi trạng thái]
+        end
+        
+        subgraph "7. QUẢN LÝ THÔNG BÁO"
+            G1[7.1 Tạo thông báo]
+            G2[7.2 Gửi thông báo]
+            G3[7.3 Xem thông báo]
+            G4[7.4 Quản lý đối tượng nhận]
+        end
+        
+        subgraph "8. BÁO CÁO & THỐNG KÊ"
+            H1[8.1 Báo cáo học tập]
+            H2[8.2 Báo cáo tài chính]
+            H3[8.3 Thống kê đăng ký]
+            H4[8.4 Xuất báo cáo]
+        end
+    end
 ```
-
-## MÔ TẢ CHI TIẾT CÁC CHỨC NĂNG MỨC 2
-
-### 1. QUẢN LÝ NGƯỜI DÙNG
-- **1.1 Quản lý Sinh viên**: Thêm, sửa, xóa thông tin sinh viên
-- **1.2 Quản lý Giáo viên**: Quản lý hồ sơ và thông tin giáo viên
-- **1.3 Xác thực & Phân quyền**: Đăng nhập, phân quyền truy cập
-
-### 2. QUẢN LÝ HỌC VỤ
-- **2.1 Quản lý Khoa**: Quản lý các khoa trong trường
-- **2.2 Quản lý Ngành học**: Quản lý các ngành đào tạo
-- **2.3 Quản lý Môn học**: Quản lý danh sách môn học
-- **2.4 Quản lý Lớp học**: Quản lý lớp học phần
-- **2.5 Quản lý Học kỳ**: Quản lý thời gian học kỳ
-
-### 3. ĐĂNG KÝ HỌC PHẦN
-- **3.1 Đăng ký học phần**: Sinh viên đăng ký môn học
-- **3.2 Hủy đăng ký**: Hủy đăng ký học phần
-- **3.3 Xem lịch học**: Xem thời khóa biểu
-- **3.4 Kiểm tra tiên quyết**: Kiểm tra điều kiện học trước
-
-### 4. QUẢN LÝ ĐIỂM SỐ
-- **4.1 Nhập điểm**: Giáo viên nhập điểm cho sinh viên
-- **4.2 Cập nhật điểm**: Chỉnh sửa điểm số
-- **4.3 Xem điểm**: Sinh viên xem điểm của mình
-- **4.4 Tính GPA**: Tính điểm trung bình tích lũy
-- **4.5 Xuất báo cáo điểm**: Tạo bảng điểm
-
-### 5. QUẢN LÝ HỌC PHÍ
-- **5.1 Tính học phí**: Tính toán học phí theo học phần
-- **5.2 Thanh toán**: Xử lý thanh toán học phí
-- **5.3 Xem lịch sử**: Theo dõi các giao dịch
-- **5.4 Quản lý công nợ**: Quản lý nợ học phí
-
-### 6. QUẢN LÝ TÀI LIỆU
-- **6.1 Yêu cầu tài liệu**: Sinh viên yêu cầu giấy tờ
-- **6.2 Duyệt yêu cầu**: Xử lý yêu cầu tài liệu
-- **6.3 Quản lý loại tài liệu**: Quản lý các loại giấy tờ
-- **6.4 Theo dõi trạng thái**: Theo dõi tiến độ xử lý
-
-### 7. QUẢN LÝ THÔNG BÁO
-- **7.1 Tạo thông báo**: Soạn thông báo mới
-- **7.2 Gửi thông báo**: Phát thông báo đến người dùng
-- **7.3 Xem thông báo**: Đọc thông báo đã nhận
-- **7.4 Quản lý đối tượng nhận**: Chọn người nhận thông báo
-
-### 8. BÁO CÁO & THỐNG KÊ
-- **8.1 Báo cáo học tập**: Báo cáo kết quả học tập
-- **8.2 Báo cáo tài chính**: Báo cáo thu chi học phí
-- **8.3 Thống kê đăng ký**: Thống kê đăng ký học phần
-- **8.4 Xuất báo cáo**: Tạo và xuất các loại báo cáo
-
-## KIẾN TRÚC HỆ THỐNG
-- **Backend**: Django REST API
-- **Frontend**: React (Admin/Teacher: TypeScript, Student: JavaScript)
-- **Database**: SQLite/PostgreSQL
