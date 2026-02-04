@@ -1,0 +1,44 @@
+# Backend
+backend/venv/
+backend/.env
+backend/__pycache__/
+backend/*.pyc
+backend/db.sqlite3
+backend/.DS_Store
+backend/.vscode/
+backend/.idea/
+backend/*.egg-info/
+backend/dist/
+backend/build/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.DS_Store
+frontend/.vscode/
+frontend/.idea/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+*.swp
+
+# Environment
+.env
+.env.local
+*.pem
+*.key

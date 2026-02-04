@@ -1,0 +1,57 @@
+# Production Docker Compose Configuration for AWS
+# This configuration is optimized for production deployment on AWS
+# Use AWS RDS for database instead of MySQL container in production
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: course_registration_backend_prod
+    restart: always
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+    networks:
+      - course_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: course_registration_frontend_prod
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - course_network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  course_network:
+    driver: bridge
+
+# NOTE: In production on AWS, you should:
+# 1. Use AWS RDS for MySQL database (not a container)
+# 2. Use AWS ECS/EKS for container orchestration
+# 3. Use AWS ALB for load balancing
+# 4. Store secrets in AWS Secrets Manager
+# 5. Use AWS CloudWatch for logging
+# 6. Use AWS S3 for static files
+# 7. Configure proper security groups and VPC
