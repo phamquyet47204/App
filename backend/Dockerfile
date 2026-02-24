@@ -1,32 +1,35 @@
-FROM python:3.10-slim
+# Backend Dockerfile
+FROM python:3.12-slim
 
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    gcc \
     default-libmysqlclient-dev \
     pkg-config \
-    gcc \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
+# Copy application code
 COPY . .
 
-# Copy and set permissions for entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Create static files directory
-RUN mkdir -p staticfiles
-
+# Expose port
 EXPOSE 8000
 
-# Use entrypoint for migrations and collectstatic
-ENTRYPOINT ["/entrypoint.sh"]
+# Create entrypoint script
+RUN echo '#!/bin/sh\n\
+echo "Waiting for database..."\n\
+while ! nc -z db 3306; do\n\
+  sleep 1\n\
+done\n\
+echo "Database is ready!"\n\
+python manage.py migrate\n\
+python manage.py runserver 0.0.0.0:8000\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
 
-# Default command for production (can be overridden in docker-compose)
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]
+CMD ["/entrypoint.sh"]

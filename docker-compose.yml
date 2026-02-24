@@ -1,72 +1,46 @@
-# Development Docker Compose Configuration
-version: '3.8'
-
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: course_registration_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root123}
-      MYSQL_DATABASE: ${DB_NAME:-course_registration}
-      MYSQL_CHARSET: utf8mb4
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - course_network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: course_registration_backend
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - ./backend:/app
+    container_name: course-registration-backend
     ports:
       - "8000:8000"
     env_file:
-      - ./backend/.env
-    environment:
-      - DEBUG=True
-      - DB_HOST=mysql
-      - DB_NAME=${DB_NAME:-course_registration}
-      - DB_USER=${DB_USER:-root}
-      - DB_PASSWORD=${DB_PASSWORD:-root123}
-      - DB_PORT=3306
+      - .env
+    volumes:
+      - ./backend:/app
     depends_on:
-      mysql:
-        condition: service_healthy
+      - db
     networks:
-      - course_network
+      - app-network
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: course_registration_frontend
+      dockerfile: Dockerfile
+    container_name: course-registration-frontend
     ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    env_file:
-      - ./frontend/.env
-    environment:
-      - VITE_API_URL=http://localhost:8000/api
-    networks:
-      - course_network
+      - "3000:80"
     depends_on:
       - backend
+    networks:
+      - app-network
 
-volumes:
-  mysql_data:
+  db:
+    image: mysql:8.0
+    container_name: course-registration-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_DB_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DB_NAME}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
 
 networks:
-  course_network:
+  app-network:
     driver: bridge
+
+volumes:
+  mysql-data:
