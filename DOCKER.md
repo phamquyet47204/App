@@ -27,10 +27,10 @@ docker build -t course-frontend .
 docker run -p 80:80 course-frontend
 ```
 
-## Seed dữ liệu vào MySQL container
+## Seed dữ liệu vào MySQL RDS
 
 ```bash
-docker exec -i course-registration-db mysql -uroot -ppython123 course_registration < seed_mysql.sql
+MYSQL_PWD='python123' mysql --ssl -h database-1-instance-1.cex04as4isj0.us-east-1.rds.amazonaws.com -P 3306 -u admin course_registration < sql.sql
 ```
 
 ## Tạo superuser
@@ -56,4 +56,24 @@ docker-compose down -v
 1. Thay `DJANGO_SECRET_KEY` trong `.env`
 2. Đặt `DJANGO_DEBUG=False`
 3. Cấu hình HTTPS cho nginx
-4. Sử dụng managed database thay vì MySQL container
+4. Sử dụng managed database (RDS) như cấu hình hiện tại
+
+## Gửi mail qua Lambda (thay SMTP trực tiếp)
+
+1. Triển khai Lambda theo mã tại `aws/lambda/ses_mail_sender/lambda_function.py`
+2. Đặt `.env` backend:
+
+```dotenv
+EMAIL_PROVIDER=lambda
+EMAIL_LAMBDA_FUNCTION_NAME=course-registration-ses-mail-sender
+EMAIL_LAMBDA_REGION=us-east-1
+```
+
+3. IAM role của máy/container chạy backend cần quyền:
+- `lambda:InvokeFunction` cho Lambda mail sender
+
+4. Rebuild services:
+
+```bash
+docker-compose up -d --build
+```

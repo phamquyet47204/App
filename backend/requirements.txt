@@ -4,3 +4,4 @@ django-cors-headers==4.6.0
 python-dotenv==1.0.1
 django-sendgrid-v5==1.2.4
 mysqlclient==2.2.1
+boto3==1.36.26

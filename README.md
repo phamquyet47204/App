@@ -69,3 +69,43 @@ Xem chi tiết: [DOCKER.md](DOCKER.md)
 ## Tài khoản mẫu (sau khi seed)
 - **Sinh viên**: username `sv001` / password `Password123!`
 - **Admin**: username `admin` / password `Admin123!`
+
+## Gửi email qua AWS Lambda + SES
+
+Backend đã hỗ trợ gọi Lambda để gửi mail khi đăng ký/hủy môn.
+
+### 1) Tạo Lambda gửi SES
+- Mã Lambda mẫu: `aws/lambda/ses_mail_sender/lambda_function.py`
+- Runtime: Python 3.12
+- Region: `us-east-1`
+- Biến môi trường Lambda:
+   - `SES_REGION=us-east-1`
+   - `FROM_EMAIL=abcuniversity@enormitpham.me`
+   - `SES_SOURCE_ARN=arn:aws:ses:us-east-1:667467573689:identity/enormitpham.me`
+
+### 2) Gán quyền cho Lambda role
+Cho phép action `ses:SendEmail` trên identity:
+
+```json
+{
+   "Version": "2012-10-17",
+   "Statement": [
+      {
+         "Effect": "Allow",
+         "Action": "ses:SendEmail",
+         "Resource": "arn:aws:ses:us-east-1:667467573689:identity/enormitpham.me"
+      }
+   ]
+}
+```
+
+### 3) Cấu hình backend gọi Lambda
+Trong `.env`:
+
+```dotenv
+EMAIL_PROVIDER=lambda
+EMAIL_LAMBDA_FUNCTION_NAME=course-registration-ses-mail-sender
+EMAIL_LAMBDA_REGION=us-east-1
+```
+
+Với EC2/ECS chạy backend, IAM role cần quyền gọi Lambda (`lambda:InvokeFunction`) cho function trên.

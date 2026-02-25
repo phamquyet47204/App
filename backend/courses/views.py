@@ -1,32 +1,12 @@
-from django.conf import settings
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .email_sender import send_registration_email
 from .models import Course, Registration, RegistrationWindow
 from .permissions import IsStaffUser
 from .serializers import CourseSerializer, RegistrationSerializer, RegistrationWindowSerializer
-
-
-def send_registration_email(user, course, action):
-    subject = f"[{settings.EMAIL_SUBJECT_PREFIX}] {action} môn học thành công"
-    message = (
-        f"Xin chào {user.get_full_name() or user.username},\n\n"
-        f"Bạn đã {action.lower()} môn học thành công.\n"
-        f"Mã môn: {course.code}\n"
-        f"Tên môn: {course.name}\n\n"
-        "Trân trọng."
-    )
-
-    send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email],
-        fail_silently=False,
-    )
 
 
 class CourseListView(APIView):
