@@ -3,6 +3,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -35,7 +38,9 @@ if [ "$DB_ENGINE" = "mysql" ]; then\n\
   echo "MySQL is reachable."\n\
 fi\n\
 python manage.py migrate\n\
-python manage.py runserver 0.0.0.0:8000\n\
+APP_PORT=${PORT:-8000}\n\
+GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}\n\
+exec gunicorn config.wsgi:application --bind 0.0.0.0:${APP_PORT} --workers ${GUNICORN_WORKERS} --timeout 120\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 CMD ["/entrypoint.sh"]

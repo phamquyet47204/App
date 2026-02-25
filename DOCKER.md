@@ -77,3 +77,47 @@ EMAIL_LAMBDA_REGION=us-east-1
 ```bash
 docker-compose up -d --build
 ```
+
+## Push image lên ECR (cho ECS)
+
+```bash
+AWS_REGION=us-east-1
+ACCOUNT_ID=<your-account-id>
+
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+```
+
+### Backend image
+
+```bash
+REPO_BACKEND=app-backend
+TAG=latest
+
+aws ecr describe-repositories --repository-names $REPO_BACKEND --region $AWS_REGION >/dev/null 2>&1 || \
+aws ecr create-repository --repository-name $REPO_BACKEND --region $AWS_REGION
+
+cd backend
+docker build -t $REPO_BACKEND:$TAG .
+docker tag $REPO_BACKEND:$TAG $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_BACKEND:$TAG
+docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_BACKEND:$TAG
+```
+
+### Frontend image
+
+```bash
+REPO_FRONTEND=app-frontend
+TAG=latest
+
+aws ecr describe-repositories --repository-names $REPO_FRONTEND --region $AWS_REGION >/dev/null 2>&1 || \
+aws ecr create-repository --repository-name $REPO_FRONTEND --region $AWS_REGION
+
+cd ../frontend
+docker build -t $REPO_FRONTEND:$TAG .
+docker tag $REPO_FRONTEND:$TAG $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_FRONTEND:$TAG
+docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_FRONTEND:$TAG
+```
+
+### ECS/ALB port mapping gợi ý
+- Backend container port: `8000`
+- Frontend (nginx) container port: `80`
+- ALB rules: `/api/* -> backend TG`, `/* -> frontend TG`

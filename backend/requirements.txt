@@ -5,3 +5,4 @@ python-dotenv==1.0.1
 django-sendgrid-v5==1.2.4
 mysqlclient==2.2.1
 boto3==1.36.26
+gunicorn==22.0.0
