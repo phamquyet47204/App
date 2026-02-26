@@ -17,11 +17,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: course-registration-frontend
     ports:
       - "80:80"
-    depends_on:
-      - backend
     networks:
       - app-network
 

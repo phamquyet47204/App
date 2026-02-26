@@ -109,3 +109,22 @@ EMAIL_LAMBDA_REGION=us-east-1
 ```
 
 Với EC2/ECS chạy backend, IAM role cần quyền gọi Lambda (`lambda:InvokeFunction`) cho function trên.
+
+## CI/CD với GitHub Actions (ECR + ECS)
+
+Repo đã có sẵn workflows:
+- `.github/workflows/ci.yml`: build kiểm tra backend/frontend cho PR.
+- `.github/workflows/cd-ecs.yml`: build + push image lên ECR và deploy ECS khi merge `main`.
+
+### GitHub Secrets cần tạo
+- `AWS_ROLE_ARN`: IAM role cho GitHub OIDC để deploy AWS.
+
+### GitHub Variables cần tạo
+- `AWS_REGION` (ví dụ: `us-east-1`)
+- `ECR_REPO_BE` (ví dụ: `be`)
+- `ECR_REPO_FE` (ví dụ: `fe`)
+- `ECS_CLUSTER`
+- `ECS_SERVICE_BE`
+- `ECS_SERVICE_FE`
+- `ECS_CONTAINER_BE` (tên container backend trong task definition)
+- `ECS_CONTAINER_FE` (tên container frontend trong task definition)
