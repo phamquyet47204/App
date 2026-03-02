@@ -10,9 +10,12 @@ export async function apiRequest(path, options = {}, token = null) {
     headers.Authorization = `Token ${token}`;
   }
 
+  const isAuthEndpoint = path.startsWith("/auth/");
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
+    cache: options.cache ?? (isAuthEndpoint ? "no-store" : options.cache),
   });
 
   if (response.status === 204) {
