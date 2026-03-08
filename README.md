@@ -128,3 +128,29 @@ Repo đã có sẵn workflows:
 - `ECS_SERVICE_FE`
 - `ECS_CONTAINER_BE` (tên container backend trong task definition)
 - `ECS_CONTAINER_FE` (tên container frontend trong task definition)
+
+## Tích hợp AWS Config (Managed Rules)
+
+Repo có sẵn script để bật AWS Config và triển khai baseline AWS Managed Rules cho stack ECS + Lambda + RDS:
+
+- Hướng dẫn chi tiết: `aws/config/README.md`
+- Script bootstrap Config: `aws/config/setup_config.sh`
+- Script deploy baseline rules: `aws/config/deploy_baseline_rules.sh`
+
+## Cấu hình ECS để scale ổn định (không lỗi DisallowedHost)
+
+Trong task definition của backend, thêm env:
+
+- `DJANGO_ALLOW_ALL_HOSTS_ON_ECS=true` (mặc định đã là true)
+- `DJANGO_ALLOWED_HOSTS=` (có thể bỏ trống nếu dùng biến trên)
+
+Nếu muốn siết bảo mật host theo domain cố định:
+
+- `DJANGO_ALLOW_ALL_HOSTS_ON_ECS=false`
+- `DJANGO_ALLOWED_HOSTS=api.your-domain.com,alb-dns-name`
+
+## Lưu ý startup backend với MySQL trên ECS
+
+- Entrypoint backend chỉ chờ MySQL khi có `MYSQL_DB_HOST`.
+- Nếu không set `MYSQL_DB_HOST` ở env container, bước wait sẽ bỏ qua và Django tự đọc cấu hình DB khi runtime (từ env/secrets).
+- Khi dùng RDS trong ECS, nên set đầy đủ `MYSQL_DB_HOST`, `MYSQL_DB_PORT`, `MYSQL_DB_USER`, `MYSQL_DB_PASSWORD`, `MYSQL_DB_NAME` để startup ổn định.

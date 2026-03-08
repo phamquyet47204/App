@@ -8,6 +8,8 @@ export default function AdminPage({ token, user, onLogout }) {
     start_at: "",
     end_at: "",
   });
+  const [stressStatus, setStressStatus] = useState(null);
+  const [stressLoading, setStressLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -25,9 +27,31 @@ export default function AdminPage({ token, user, onLogout }) {
     }
   };
 
+  const loadStressStatus = async () => {
+    try {
+      const data = await apiRequest("/admin/cpu-stress-test/", {}, token);
+      setStressStatus(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
     loadWindow();
+    loadStressStatus();
   }, []);
+
+  useEffect(() => {
+    if (!stressStatus?.running) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      loadStressStatus();
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [stressStatus?.running]);
 
   if (!user?.is_staff) {
     return <Navigate to="/" replace />;
@@ -70,6 +94,29 @@ export default function AdminPage({ token, user, onLogout }) {
   const handleOpenNow = async () => {
     setForm({ is_open: true, start_at: "", end_at: "" });
     await saveWindow({ is_open: true, start_at: null, end_at: null });
+  };
+
+  const handleCpuStressTest = async () => {
+    setStressLoading(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const data = await apiRequest(
+        "/admin/cpu-stress-test/",
+        {
+          method: "POST",
+        },
+        token
+      );
+      setStressStatus(data);
+      setMessage(data.detail || "Đã bắt đầu stress test CPU.");
+    } catch (err) {
+      setError(err.message);
+      await loadStressStatus();
+    } finally {
+      setStressLoading(false);
+    }
   };
 
   return (
@@ -122,6 +169,25 @@ export default function AdminPage({ token, user, onLogout }) {
           </button>
         </div>
       </form>
+
+      <div className="card">
+        <h3>CPU Stress Test</h3>
+        <p>Nhấn để chạy stress test CPU 80% trong 2 phút trên backend.</p>
+        {stressStatus ? (
+          <p>
+            Trạng thái: {stressStatus.running ? "Đang chạy" : "Đang dừng"}
+            {stressStatus.running ? ` (còn ${stressStatus.remaining_seconds}s)` : ""}
+          </p>
+        ) : null}
+        <div className="actions">
+          <button type="button" onClick={handleCpuStressTest} disabled={stressLoading || stressStatus?.running}>
+            {stressLoading ? "Đang kích hoạt..." : "Chạy CPU 80% trong 2 phút"}
+          </button>
+          <button type="button" onClick={loadStressStatus}>
+            Làm mới trạng thái
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

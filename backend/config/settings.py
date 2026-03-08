@@ -44,9 +44,29 @@ def _load_aws_secrets_into_env():
 
 _load_aws_secrets_into_env()
 
+
+def _parse_allowed_hosts(value):
+    raw_hosts = [host.strip() for host in str(value).split(",") if host.strip()]
+    if not raw_hosts:
+        return ["127.0.0.1", "localhost"]
+    if "*" in raw_hosts:
+        return ["*"]
+    return raw_hosts
+
+
+def _running_on_ecs():
+    execution_env = os.getenv("AWS_EXECUTION_ENV", "")
+    return bool(os.getenv("ECS_CONTAINER_METADATA_URI_V4")) or execution_env.startswith("AWS_ECS")
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if host.strip()]
+
+allow_all_hosts_on_ecs = _str_to_bool(os.getenv("DJANGO_ALLOW_ALL_HOSTS_ON_ECS", "true"))
+if _running_on_ecs() and allow_all_hosts_on_ecs:
+    ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = _parse_allowed_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost"))
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -28,14 +28,16 @@ EXPOSE 8000
 RUN echo '#!/bin/sh\n\
 set -e\n\
 DB_ENGINE=${DB_ENGINE:-sqlite}\n\
-if [ "$DB_ENGINE" = "mysql" ]; then\n\
-  DB_HOST=${MYSQL_DB_HOST:-127.0.0.1}\n\
+if [ "$DB_ENGINE" = "mysql" ] && [ -n "${MYSQL_DB_HOST:-}" ]; then\n\
+  DB_HOST=${MYSQL_DB_HOST}\n\
   DB_PORT=${MYSQL_DB_PORT:-3306}\n\
   echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."\n\
   while ! nc -z "$DB_HOST" "$DB_PORT"; do\n\
     sleep 1\n\
   done\n\
   echo "MySQL is reachable."\n\
+else\n\
+  echo "Skipping MySQL wait step (DB resolved at Django runtime)."\n\
 fi\n\
 python manage.py migrate\n\
 APP_PORT=${PORT:-8000}\n\
