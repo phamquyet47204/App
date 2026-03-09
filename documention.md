@@ -326,3 +326,62 @@ cd ..
 9. Vào `S3 -> bucket log WAF -> Objects`:
    - Có file log mới phát sinh.
 
+## 13) Bảng chi phí ước tính 1 tháng
+
+### 13.1 Giả định dùng để tính
+
+- Region: `us-east-1`, thời gian chạy `730 giờ/tháng`.
+- Có `NAT Gateway`.
+- Database: `Aurora MySQL Serverless v2`, min `0.5 ACU`.
+- ECS baseline:
+  - Backend: `0.5 vCPU / 1GB`, `1 task`.
+  - Frontend: `0.25 vCPU / 0.5GB`, `1 task`.
+- Có: ALB, CloudFront, WAF, Route 53, CloudWatch, S3 log WAF, Firehose, ECR.
+
+### 13.2 Bảng chi phí theo 2 kịch bản cao điểm
+
+| Kịch bản | Giả định tải cao điểm | Chi phí tăng thêm do cao điểm | Tổng ước tính / tháng |
+|---|---|---:|---:|
+| 4 giờ cao điểm mỗi ngày | ~120 giờ/tháng; backend scale ~4 task, frontend ~2 task; Aurora trung bình ~2 ACU khi spike | +$35 đến +$45 | $220 đến $235 |
+| 2 ngày cao điểm mỗi tháng | ~48 giờ/tháng; profile scale tương tự | +$15 đến +$25 | $195 đến $210 |
+
+### 13.3 Bảng best / expected / worst
+
+| Mức | Mô tả tải | Tổng ước tính / tháng |
+|---|---|---:|
+| Best | Ít truy cập, chỉ vài đợt spike ngắn, Aurora chủ yếu quanh 0.5 ACU | $180 đến $200 |
+| Expected | Có đợt cao điểm theo lịch đăng ký, scale backend/frontend vừa phải | $210 đến $260 |
+| Worst | Cao điểm kéo dài, request lớn, Aurora giữ ACU cao lâu hơn, băng thông tăng | $300 đến $380 |
+
+### 13.4 Cách đọc nhanh bảng chi phí
+
+- Nếu hệ thống chỉ cao điểm ngắn theo lịch: dùng dòng `2 ngày cao điểm` hoặc `Best/Expected`.
+- Nếu mở đăng ký dài và nhiều user đồng thời: dùng `4 giờ/ngày` hoặc `Worst`.
+- Nếu triển khai 2 NAT Gateway (đa AZ đầy đủ), cộng thêm khoảng `$30-$40/tháng`.
+
+## 14) Thống kê dịch vụ + dự đoán giá (gộp 1 bảng)
+
+Giả định: `us-east-1`, `730 giờ/tháng`, có `1 NAT Gateway`, Aurora Serverless v2 min `0.5 ACU`, mô hình web đăng ký môn có giờ cao điểm theo đợt.
+
+| Nhóm | Dịch vụ AWS | Vai trò trong kiến trúc | Dự đoán chi phí / tháng (USD) |
+|---|---|---|---:|
+| Compute | ECS Fargate | Chạy container backend và frontend | 30 - 60 |
+| Database | Aurora MySQL Serverless v2 | Lưu dữ liệu đăng ký môn học | 52 - 108 |
+| Network | VPC, Subnet, Security Group | Cô lập mạng, phân tách public/private, kiểm soát inbound/outbound | 0 |
+| Network | NAT Gateway | Cho private subnet ra internet khi cần | 38 - 53 |
+| Container Registry | ECR | Lưu image backend/frontend trước khi deploy ECS | 0.5 - 3 |
+| Load Balancing | Application Load Balancer (ALB) | Cân bằng tải và route request vào service phù hợp | 22 - 35 |
+| CDN | CloudFront | Phân phối nội dung, giảm latency, làm lớp edge trước ALB | 20 - 60 |
+| DNS | Route 53 | Trỏ domain về CloudFront distribution | 1 - 3 |
+| Security | WAF | Lọc request xấu, áp rule bảo mật ứng dụng web | 14 - 40 |
+| Secrets | Secrets Manager | Lưu secret ứng dụng và thông tin kết nối DB | 0.4 - 2 |
+| Observability | CloudWatch | Theo dõi metrics, tạo alarms, theo dõi trạng thái hệ thống | 8 - 25 |
+| Logging | S3 | Lưu log WAF dài hạn | 1 - 5 |
+| Logging pipeline | Kinesis Data Firehose | Nhận log từ WAF và đẩy vào S3 | 0.4 - 3 |
+|  | **Tổng dự đoán** | **Tổng chi phí theo tải thấp -> cao** | **186 - 397** |
+
+Mốc dùng nhanh:
+
+- Vận hành thông thường theo lịch đăng ký môn (expected): khoảng `210 - 260 USD/tháng`.
+- Nếu triển khai `2 NAT Gateway` (HA đầy đủ đa AZ): cộng thêm khoảng `30 - 40 USD/tháng`.
+
