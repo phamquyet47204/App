@@ -385,3 +385,84 @@ Mốc dùng nhanh:
 - Vận hành thông thường theo lịch đăng ký môn (expected): khoảng `210 - 260 USD/tháng`.
 - Nếu triển khai `2 NAT Gateway` (HA đầy đủ đa AZ): cộng thêm khoảng `30 - 40 USD/tháng`.
 
+## 15) Cấu hình tối ưu chi phí (không ảnh hưởng hiệu năng)
+
+## 15.1 Cấu hình VPC Endpoints để giảm traffic qua NAT Gateway
+
+Mục tiêu: cho ECS private subnet truy cập dịch vụ AWS nội bộ qua endpoint thay vì đi NAT.
+
+### A. Tạo Gateway Endpoint cho S3
+
+1. Gõ `VPC`, click `VPC`.
+2. Menu trái, click `Endpoints`.
+3. Click `Create endpoint`.
+4. Name tag: nhập `vpce-s3`.
+5. Service category: chọn `AWS services`.
+6. Service name: tìm và chọn `com.amazonaws.us-east-1.s3`.
+7. VPC: chọn VPC đang chạy ECS.
+8. Endpoint type: chọn `Gateway`.
+9. Route tables: tick các route table của private subnets ECS.
+10. Policy: chọn `Full access` (hoặc custom policy theo nhu cầu).
+11. Click `Create endpoint`.
+
+### B. Tạo Interface Endpoint cho ECR API
+
+1. Vẫn trong `VPC -> Endpoints`, click `Create endpoint`.
+2. Name tag: `vpce-ecr-api`.
+3. Service name: chọn `com.amazonaws.us-east-1.ecr.api`.
+4. VPC: chọn VPC ECS.
+5. Endpoint type: chọn `Interface`.
+6. Subnets: chọn private subnets ECS.
+7. Security groups: chọn SG cho phép inbound `443` từ SG ECS service.
+8. Tick `Enable private DNS name`.
+9. Click `Create endpoint`.
+
+### C. Tạo Interface Endpoint cho ECR DKR
+
+1. Click `Create endpoint`.
+2. Name tag: `vpce-ecr-dkr`.
+3. Service name: chọn `com.amazonaws.us-east-1.ecr.dkr`.
+4. VPC/Subnets/SG/Private DNS: cấu hình giống endpoint ECR API.
+5. Click `Create endpoint`.
+
+### D. Tạo Interface Endpoint cho CloudWatch Logs
+
+1. Click `Create endpoint`.
+2. Name tag: `vpce-logs`.
+3. Service name: chọn `com.amazonaws.us-east-1.logs`.
+4. VPC/Subnets/SG/Private DNS: chọn giống các endpoint interface trên.
+5. Click `Create endpoint`.
+
+## 15.2 Cấu hình CloudWatch Logs retention policy
+
+Mục tiêu: tránh giữ log vô hạn gây tăng bill lưu trữ.
+
+1. Gõ `CloudWatch`, click `CloudWatch`.
+2. Menu trái, click `Logs` -> `Log groups`.
+3. Tick log group backend (ví dụ `/ecs/course-registration-be`).
+4. Click `Actions` -> `Edit retention setting`.
+5. Chọn retention, ví dụ:
+   - `14 days` cho log ứng dụng thường.
+   - `30 days` nếu cần tra cứu dài hơn.
+6. Click `Save`.
+7. Lặp lại cho `/ecs/course-registration-fe` và các log group liên quan.
+
+## 15.3 Cấu hình ECR Lifecycle Policy
+
+Mục tiêu: tự xóa image cũ không dùng, chỉ giữ các image mới nhất.
+
+1. Gõ `ECR`, click `Elastic Container Registry`.
+2. Menu trái, click `Repositories`.
+3. Click repository `app-backend`.
+4. Tab `Lifecycle policy`.
+5. Click `Create lifecycle rule`.
+6. Rule priority: `1`.
+7. Rule description: `Keep last 10 images`.
+8. Status: `Enabled`.
+9. Tag status: chọn `Any` (hoặc `Tagged` nếu chỉ muốn áp dụng image có tag).
+10. Count type: chọn `Image count more than`.
+11. Number of images to keep: nhập `10`.
+12. Click `Save` / `Create rule`.
+13. Click `Save lifecycle policy`.
+14. Lặp lại tương tự cho repository `app-frontend`.
+
