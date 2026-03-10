@@ -19,3 +19,11 @@ Thumbs.db
 
 # Local secrets
 backend.secret.json
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log

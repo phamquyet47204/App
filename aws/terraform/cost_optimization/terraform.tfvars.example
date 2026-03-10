@@ -1,0 +1,19 @@
+aws_region               = "us-east-1"
+vpc_id                   = "vpc-0af18b1088008a618"
+private_subnet_ids       = ["subnet-015a979ab070fd748", "subnet-058f2eaf7bf973664"]
+private_route_table_ids  = ["rtb-029705782a676940e", "rtb-0e1722ce9815f88f6"]
+endpoint_security_group_id = "sg-0cb5d3134f9b3d1d2"
+
+cloudwatch_log_groups_retention = {
+  "/ecs/course-registration-be" = 14
+  "/ecs/course-registration-fe" = 14
+}
+
+ecr_repository_names = ["app-backend", "app-frontend"]
+ecr_lifecycle_keep_last = 10
+
+common_tags = {
+  Project = "course-registration"
+  Env     = "prod"
+  Managed = "terraform"
+}
