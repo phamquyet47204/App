@@ -162,30 +162,58 @@ def export_users_csv(items):
 # Main
 # ─────────────────────────────────────────────
 
-def export_table(db, name):
-    full_name = tbl(name)
-    try:
-        table = db.Table(full_name)
-        items = scan_all(table)
-        json_path = export_json(name, items)
-        print(f"  [OK] {full_name:45s} → {os.path.relpath(json_path)} ({len(items)} items)")
 
-        if name == "accounts_user" and items:
-            csv_path = export_users_csv(items)
-            print(f"       {'':45s}   {os.path.relpath(csv_path)} (CSV)")
-
-    except Exception as e:
-        print(f"  [ERR] {full_name}: {e}")
+def upload_to_s3(local_path, bucket, prefix="dynamodb-exports"):
+    s3 = boto3.client("s3", region_name=REGION)
+    filename = os.path.basename(local_path)
+    key = f"{prefix}/{filename}"
+    s3.upload_file(local_path, bucket, key)
+    return f"s3://{bucket}/{key}"
 
 
 def main():
-    target_tables = sys.argv[1:] if len(sys.argv) > 1 else ALL_TABLES
+    # Lấy S3 bucket từ arg hoặc env (optional)
+    # Dùng: python dynamodb_export.py [table1 table2 ...] --s3 <bucket-name>
+    args = sys.argv[1:]
+    s3_bucket = None
+    if "--s3" in args:
+        idx = args.index("--s3")
+        s3_bucket = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
+
+    target_tables = args if args else ALL_TABLES
 
     db = get_dynamodb_resource()
     print(f"\n=== Xuất dữ liệu DynamoDB → {OUTPUT_DIR}/ ===\n")
+    exported_files = []
     for name in target_tables:
-        export_table(db, name)
-    print(f"\n✓ Hoàn tất! Kiểm tra thư mục: {OUTPUT_DIR}/\n")
+        full_name = tbl(name)
+        try:
+            table = db.Table(full_name)
+            items = scan_all(table)
+            json_path = export_json(name, items)
+            exported_files.append(json_path)
+            print(f"  [OK] {full_name:45s} → {os.path.relpath(json_path)} ({len(items)} items)")
+
+            if name == "accounts_user" and items:
+                csv_path = export_users_csv(items)
+                exported_files.append(csv_path)
+                print(f"       {'':45s}   {os.path.relpath(csv_path)} (CSV)")
+
+        except Exception as e:
+            print(f"  [ERR] {full_name}: {e}")
+
+    print(f"\n✓ Hoàn tất local! Kiểm tra thư mục: {OUTPUT_DIR}/\n")
+
+    if s3_bucket:
+        print(f"=== Upload lên s3://{s3_bucket}/dynamodb-exports/ ===\n")
+        for f in exported_files:
+            try:
+                s3_uri = upload_to_s3(f, s3_bucket)
+                print(f"  [S3] {os.path.basename(f):50s} → {s3_uri}")
+            except Exception as e:
+                print(f"  [S3 ERR] {os.path.basename(f)}: {e}")
+        print(f"\n✓ Upload hoàn tất!\n")
 
 
 if __name__ == "__main__":

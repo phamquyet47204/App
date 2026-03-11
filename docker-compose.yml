@@ -12,6 +12,9 @@ services:
       DB_ENGINE: sqlite
       USE_AWS_SECRETS: "false"
       DJANGO_SECRET_KEY: "dev-local-secret-key-change-me"
+      AWS_REGION: ap-southeast-1
+      DYNAMODB_REGION: ap-southeast-1
+      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://course-reg-frontend-667467573689.s3-website-ap-southeast-1.amazonaws.com"
     volumes:
       - ./backend:/app
     networks:

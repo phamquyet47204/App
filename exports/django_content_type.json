@@ -1,0 +1,57 @@
+[
+  {
+    "model": "logentry",
+    "id": 1,
+    "app_label": "admin"
+  },
+  {
+    "model": "permission",
+    "id": 2,
+    "app_label": "auth"
+  },
+  {
+    "model": "group",
+    "id": 3,
+    "app_label": "auth"
+  },
+  {
+    "model": "contenttype",
+    "id": 4,
+    "app_label": "contenttypes"
+  },
+  {
+    "model": "session",
+    "id": 5,
+    "app_label": "sessions"
+  },
+  {
+    "model": "token",
+    "id": 6,
+    "app_label": "authtoken"
+  },
+  {
+    "model": "tokenproxy",
+    "id": 7,
+    "app_label": "authtoken"
+  },
+  {
+    "model": "user",
+    "id": 8,
+    "app_label": "accounts"
+  },
+  {
+    "model": "course",
+    "id": 9,
+    "app_label": "courses"
+  },
+  {
+    "model": "registrationwindow",
+    "id": 10,
+    "app_label": "courses"
+  },
+  {
+    "model": "registration",
+    "id": 11,
+    "app_label": "courses"
+  }
+]

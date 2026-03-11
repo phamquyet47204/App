@@ -1,0 +1,32 @@
+[
+  {
+    "credits": 3,
+    "code": "MATH101",
+    "id": 1,
+    "name": "Giai tich 1"
+  },
+  {
+    "credits": 3,
+    "code": "PHYS101",
+    "id": 2,
+    "name": "Vat ly dai cuong"
+  },
+  {
+    "credits": 4,
+    "code": "CS101",
+    "id": 3,
+    "name": "Nhap mon lap trinh"
+  },
+  {
+    "credits": 4,
+    "code": "CS102",
+    "id": 4,
+    "name": "Cau truc du lieu"
+  },
+  {
+    "credits": 2,
+    "code": "ENG101",
+    "id": 5,
+    "name": "Tieng Anh 1"
+  }
+]
