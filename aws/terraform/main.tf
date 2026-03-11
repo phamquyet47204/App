@@ -52,18 +52,24 @@ module "database" {
   source = "./modules/database"
 
   project                       = var.project
+  region                        = var.aws_region
   private_subnet_ids            = module.networking.private_subnet_ids
   elasticache_security_group_id = module.security.elasticache_security_group_id
   redis_node_type               = var.redis_node_type
-  redis_num_nodes               = var.redis_num_nodes
 }
 
 # Storage Module (S3, Firehose)
 module "storage" {
   source = "./modules/storage"
 
-  project    = var.project
-  account_id = data.aws_caller_identity.current.account_id
+  project        = var.project
+  account_id     = data.aws_caller_identity.current.account_id
+  replica_region = var.replica_region
+
+  providers = {
+    aws         = aws
+    aws.replica = aws.replica
+  }
 }
 
 # Monitoring Module (CloudWatch, CloudTrail)

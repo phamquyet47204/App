@@ -31,10 +31,17 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
+  # Default: spread base tasks on FARGATE, scale-out on FARGATE_SPOT (cheaper)
   default_capacity_provider_strategy {
     base              = 1
-    weight            = 100
+    weight            = 1
     capacity_provider = "FARGATE"
+  }
+
+  default_capacity_provider_strategy {
+    base              = 0
+    weight            = 4
+    capacity_provider = "FARGATE_SPOT"
   }
 }
 
@@ -111,15 +118,28 @@ resource "aws_ecs_task_definition" "backend" {
   }
 }
 
-# ECS Service
+# ECS Service — Multi-AZ: tasks spread across private subnets in different AZs
 resource "aws_ecs_service" "backend" {
   name            = "${var.project}-backend-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+
+  # Capacity provider strategy: prefer FARGATE, fallback to FARGATE_SPOT
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+    base              = var.min_capacity
+  }
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 4
+    base              = 0
+  }
 
   network_configuration {
+    # private_subnet_ids spans 2+ AZs — Fargate spreads tasks automatically
     subnets          = var.private_subnet_ids
     security_groups  = [var.ecs_security_group_id]
     assign_public_ip = false
@@ -129,6 +149,22 @@ resource "aws_ecs_service" "backend" {
     target_group_arn = var.target_group_arn
     container_name   = "${var.project}-backend"
     container_port   = 8000
+  }
+
+  # Wait for ALB before registering tasks
+  health_check_grace_period_seconds = 60
+
+  # Deployment config: rolling update across AZs with no downtime
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  deployment_controller {
+    type = "ECS"
   }
 
   depends_on = [

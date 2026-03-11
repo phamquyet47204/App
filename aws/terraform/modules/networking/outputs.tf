@@ -34,6 +34,7 @@ output "target_group_arn" {
   value = aws_lb_target_group.main.arn
 }
 
-output "nat_gateway_id" {
-  value = aws_nat_gateway.main.id
+output "nat_gateway_ids" {
+  value       = aws_nat_gateway.main[*].id
+  description = "NAT Gateway IDs (one per AZ)"
 }

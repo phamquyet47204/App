@@ -96,10 +96,11 @@ variable "redis_node_type" {
   description = "ElastiCache Redis node type"
 }
 
-variable "redis_num_nodes" {
-  type        = number
-  default     = 2
-  description = "Number of Redis nodes"
+# S3 Replication
+variable "replica_region" {
+  type        = string
+  default     = "ap-northeast-1"
+  description = "Secondary AWS region for S3 Cross-Region Replication (disaster recovery)"
 }
 
 # Secrets variables

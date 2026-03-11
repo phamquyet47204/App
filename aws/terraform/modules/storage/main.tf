@@ -1,4 +1,4 @@
-# S3 Bucket for Frontend
+# S3 Bucket for Frontend (primary — ap-southeast-1)
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project}-frontend-${var.account_id}"
 
@@ -7,13 +7,151 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
-# Enable versioning
+# Enable versioning (required for CRR)
 resource "aws_s3_bucket_versioning" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
   versioning_configuration {
     status = "Enabled"
   }
+}
+
+# Server-Side Encryption
+resource "aws_s3_bucket_server_side_encryption_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+    bucket_key_enabled = true
+  }
+}
+
+# Lifecycle rule: auto-expire old non-current versions after 30d
+resource "aws_s3_bucket_lifecycle_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    id     = "expire-old-versions"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  depends_on = [aws_s3_bucket_versioning.frontend]
+}
+
+# IAM Role for S3 Cross-Region Replication
+resource "aws_iam_role" "s3_replication" {
+  name = "${var.project}-s3-replication-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.project}-s3-replication-role"
+  }
+}
+
+resource "aws_iam_role_policy" "s3_replication" {
+  name = "${var.project}-s3-replication-policy"
+  role = aws_iam_role.s3_replication.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetReplicationConfiguration",
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.frontend.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObjectVersionForReplication",
+          "s3:GetObjectVersionAcl",
+          "s3:GetObjectVersionTagging"
+        ]
+        Resource = "${aws_s3_bucket.frontend.arn}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ReplicateObject",
+          "s3:ReplicateDelete",
+          "s3:ReplicateTags"
+        ]
+        Resource = "${aws_s3_bucket.frontend_replica.arn}/*"
+      }
+    ]
+  })
+}
+
+# Replica bucket in secondary region
+resource "aws_s3_bucket" "frontend_replica" {
+  provider = aws.replica
+  bucket   = "${var.project}-frontend-replica-${var.account_id}"
+
+  tags = {
+    Name = "${var.project}-frontend-replica"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "frontend_replica" {
+  provider = aws.replica
+  bucket   = aws_s3_bucket.frontend_replica.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend_replica" {
+  provider = aws.replica
+  bucket   = aws_s3_bucket.frontend_replica.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Cross-Region Replication rule
+resource "aws_s3_bucket_replication_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  role   = aws_iam_role.s3_replication.arn
+
+  rule {
+    id     = "replicate-all"
+    status = "Enabled"
+
+    destination {
+      bucket        = aws_s3_bucket.frontend_replica.arn
+      storage_class = "STANDARD_IA"
+    }
+  }
+
+  depends_on = [aws_s3_bucket_versioning.frontend]
 }
 
 # Block public access temporarily

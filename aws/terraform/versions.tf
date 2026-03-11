@@ -25,7 +25,20 @@ provider "aws" {
       Project     = var.project
       Environment = var.environment
       ManagedBy   = "Terraform"
-      CreatedAt   = timestamp()
+    }
+  }
+}
+
+# Secondary provider for S3 Cross-Region Replication
+provider "aws" {
+  alias  = "replica"
+  region = var.replica_region
+
+  default_tags {
+    tags = {
+      Project     = var.project
+      Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   }
 }

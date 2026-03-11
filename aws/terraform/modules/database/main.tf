@@ -19,10 +19,18 @@ locals {
 }
 
 # DynamoDB Table: accounts_user
+# Multi-AZ: DynamoDB is inherently replicated across 3 AZs within a region
+# Point-in-time recovery (PITR) enabled for data durability
 resource "aws_dynamodb_table" "accounts_user" {
   name           = "accounts_user"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  deletion_protection_enabled = true
 
   attribute {
     name = "id"
@@ -79,6 +87,12 @@ resource "aws_dynamodb_table" "courses_course" {
     type = "N"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  deletion_protection_enabled = true
+
   tags = {
     Name = "courses_course"
   }
@@ -89,6 +103,12 @@ resource "aws_dynamodb_table" "courses_registration" {
   name           = "courses_registration"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "id"
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  deletion_protection_enabled = true
 
   attribute {
     name = "id"
@@ -129,6 +149,12 @@ resource "aws_dynamodb_table" "courses_registrationwindow" {
     type = "N"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  deletion_protection_enabled = true
+
   tags = {
     Name = "courses_registrationwindow"
   }
@@ -139,6 +165,12 @@ resource "aws_dynamodb_table" "authtoken_token" {
   name           = "authtoken_token"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "key"
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  deletion_protection_enabled = true
 
   attribute {
     name = "key"
@@ -185,12 +217,16 @@ resource "aws_dynamodb_table" "generic" {
     type = "N"
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
   tags = {
     Name = each.value
   }
 }
 
-# ElastiCache Redis Subnet Group
+# ElastiCache Redis Subnet Group — spans all private AZs
 resource "aws_elasticache_subnet_group" "main" {
   name       = "${var.project}-redis-subnet-group"
   subnet_ids = var.private_subnet_ids
@@ -200,23 +236,29 @@ resource "aws_elasticache_subnet_group" "main" {
   }
 }
 
-# ElastiCache Redis Cluster
-resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = "${var.project}-redis"
-  engine               = "redis"
-  node_type           = var.redis_node_type
-  num_cache_nodes     = var.redis_num_nodes
-  parameter_group_name = "default.redis7"
-  engine_version      = "7.0"
-  port                = 6379
-  subnet_group_name   = aws_elasticache_subnet_group.main.name
-  security_group_ids  = [var.elasticache_security_group_id]
+# ElastiCache Redis Replication Group — Multi-AZ with automatic failover
+# Primary in AZ-a, replica in AZ-b
+resource "aws_elasticache_replication_group" "redis" {
+  replication_group_id       = "${var.project}-redis"
+  description                = "${var.project} Redis Multi-AZ replication group"
+  node_type                  = var.redis_node_type
+  parameter_group_name       = "default.redis7"
+  engine_version             = "7.0"
+  port                       = 6379
+  subnet_group_name          = aws_elasticache_subnet_group.main.name
+  security_group_ids         = [var.elasticache_security_group_id]
 
-  # Note: ElastiCache cluster (non-replication-group) has limited features
-  # For HA and encryption, use aws_elasticache_replication_group instead
-  # automatic_failover_enabled = true
-  # at_rest_encryption_enabled = true
-  # transit_encryption_enabled = true
+  # Multi-AZ HA configuration
+  num_cache_clusters         = 2          # 1 primary + 1 replica across AZs
+  automatic_failover_enabled = true
+  multi_az_enabled           = true
+
+  # Encryption at rest and in transit
+  at_rest_encryption_enabled  = true
+  transit_encryption_enabled  = false     # set true if client supports TLS
+
+  # Auto minor version upgrades
+  auto_minor_version_upgrade = true
 
   log_delivery_configuration {
     destination      = aws_cloudwatch_log_group.redis_slow.name
@@ -233,7 +275,7 @@ resource "aws_elasticache_cluster" "redis" {
   }
 
   tags = {
-    Name = "${var.project}-redis"
+    Name = "${var.project}-redis-multi-az"
   }
 
   depends_on = [
