@@ -1,0 +1,16 @@
+{
+  "DeliveryStreamName": "aws-waf-logs-awf-alb",
+  "DeliveryStreamType": "DirectPut",
+  "S3DestinationConfiguration": {
+    "RoleARN": "arn:aws:iam::667467573689:role/FirehoseToS3WafLogsRole",
+    "BucketARN": "arn:aws:s3:::waf-logs-667467573689-us-east-1-20260310-065632",
+    "Prefix": "waf/",
+    "ErrorOutputPrefix": "waf-errors/",
+    "CompressionFormat": "GZIP",
+    "CloudWatchLoggingOptions": {
+      "Enabled": true,
+      "LogGroupName": "/aws/kinesisfirehose/aws-waf-logs-awf-alb",
+      "LogStreamName": "S3Delivery"
+    }
+  }
+}

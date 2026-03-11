@@ -3,13 +3,14 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
-from django.shortcuts import get_object_or_404
+from boto3.dynamodb.conditions import Key
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from dynamo import next_numeric_id, table, to_native
+
 from .email_sender import send_registration_email
-from .models import Course, Registration, RegistrationWindow
 from .permissions import IsStaffUser
 from .serializers import CourseSerializer, RegistrationSerializer, RegistrationWindowSerializer
 
@@ -82,69 +83,188 @@ def _get_stress_status():
         }
 
 
+def _parse_iso_utc(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    text = str(value).replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _window_payload(item):
+    item = to_native(item or {})
+    now = datetime.now(timezone.utc)
+    start_at = _parse_iso_utc(item.get("start_at"))
+    end_at = _parse_iso_utc(item.get("end_at"))
+    is_open = bool(item.get("is_open", False))
+
+    can_register = is_open
+    if start_at and now < start_at:
+        can_register = False
+    if end_at and now > end_at:
+        can_register = False
+
+    return {
+        "id": int(item.get("id", 1)),
+        "is_open": is_open,
+        "start_at": item.get("start_at"),
+        "end_at": item.get("end_at"),
+        "updated_at": item.get("updated_at"),
+        "can_register": can_register,
+    }
+
+
+def _get_registration_window_item():
+    window_table = table("courses_registrationwindow")
+    item = window_table.get_item(Key={"id": 1}).get("Item")
+    if item:
+        return item
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    default_item = {
+        "id": 1,
+        "is_open": False,
+        "updated_at": now_iso,
+    }
+    window_table.put_item(Item=default_item)
+    return default_item
+
+
 class CourseListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        courses = Course.objects.all().order_by("code")
-        registration_course_ids = set(
-            Registration.objects.filter(student=request.user).values_list("course_id", flat=True)
+        registration_rows = table("courses_registration").query(
+            IndexName="student_course-index",
+            KeyConditionExpression=Key("student_id").eq(int(request.user.id)),
         )
-        serializer = CourseSerializer(
-            courses,
-            many=True,
-            context={"registration_course_ids": registration_course_ids},
-        )
-        return Response(serializer.data)
+        registration_course_ids = {
+            int(to_native(item["course_id"]))
+            for item in registration_rows.get("Items", [])
+        }
+
+        courses = [to_native(item) for item in table("courses_course").scan().get("Items", [])]
+        courses.sort(key=lambda c: c.get("code", ""))
+        payload = []
+        for course in courses:
+            payload.append(
+                {
+                    "id": int(course["id"]),
+                    "code": course.get("code", ""),
+                    "name": course.get("name", ""),
+                    "credits": int(course.get("credits", 0)),
+                    "is_registered": int(course["id"]) in registration_course_ids,
+                }
+            )
+        return Response(CourseSerializer(payload, many=True).data)
 
 
 class RegistrationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        registrations = Registration.objects.filter(student=request.user).select_related("course")
-        return Response(RegistrationSerializer(registrations, many=True).data)
+        reg_table = table("courses_registration")
+        reg_rows = reg_table.query(
+            IndexName="student_course-index",
+            KeyConditionExpression=Key("student_id").eq(int(request.user.id)),
+        ).get("Items", [])
+
+        course_table = table("courses_course")
+        payload = []
+        for row in reg_rows:
+            row = to_native(row)
+            course_item = course_table.get_item(Key={"id": int(row["course_id"])}).get("Item")
+            if not course_item:
+                continue
+            course = to_native(course_item)
+            payload.append(
+                {
+                    "id": int(row["id"]),
+                    "created_at": row.get("created_at", ""),
+                    "course": {
+                        "id": int(course["id"]),
+                        "code": course.get("code", ""),
+                        "name": course.get("name", ""),
+                        "credits": int(course.get("credits", 0)),
+                        "is_registered": True,
+                    },
+                }
+            )
+        payload.sort(key=lambda x: x.get("id", 0))
+        return Response(RegistrationSerializer(payload, many=True).data)
 
 
 class RegistrationActionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, course_id):
-        window = RegistrationWindow.get_solo()
-        if not window.can_register():
+        window_payload = _window_payload(_get_registration_window_item())
+        if not window_payload["can_register"]:
             return Response(
                 {"detail": "Hệ thống hiện không trong thời gian đăng ký môn."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        course = get_object_or_404(Course, pk=course_id)
-        registration, created = Registration.objects.get_or_create(student=request.user, course=course)
-        if not created:
+        course_item = table("courses_course").get_item(Key={"id": int(course_id)}).get("Item")
+        if not course_item:
+            return Response({"detail": "Môn học không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+
+        course = to_native(course_item)
+        reg_table = table("courses_registration")
+        existing = reg_table.query(
+            IndexName="student_course-index",
+            KeyConditionExpression=Key("student_id").eq(int(request.user.id)) & Key("course_id").eq(int(course_id)),
+            Limit=1,
+        )
+        if existing.get("Items"):
             return Response(
                 {"detail": "Bạn đã đăng ký môn học này rồi."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        registration_id = next_numeric_id("courses_registration")
+        reg_table.put_item(
+            Item={
+                "id": registration_id,
+                "student_id": int(request.user.id),
+                "course_id": int(course_id),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
         send_registration_email(request.user, course, "Đăng ký")
         return Response({"detail": "Đăng ký môn học thành công."}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, course_id):
-        window = RegistrationWindow.get_solo()
-        if not window.can_register():
+        window_payload = _window_payload(_get_registration_window_item())
+        if not window_payload["can_register"]:
             return Response(
                 {"detail": "Hệ thống hiện không trong thời gian đăng ký môn."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        course = get_object_or_404(Course, pk=course_id)
-        registration = Registration.objects.filter(student=request.user, course=course).first()
-        if not registration:
+        course_item = table("courses_course").get_item(Key={"id": int(course_id)}).get("Item")
+        if not course_item:
+            return Response({"detail": "Môn học không tồn tại."}, status=status.HTTP_404_NOT_FOUND)
+
+        course = to_native(course_item)
+        reg_table = table("courses_registration")
+        existing = reg_table.query(
+            IndexName="student_course-index",
+            KeyConditionExpression=Key("student_id").eq(int(request.user.id)) & Key("course_id").eq(int(course_id)),
+            Limit=1,
+        ).get("Items", [])
+        if not existing:
             return Response(
                 {"detail": "Bạn chưa đăng ký môn học này."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        registration.delete()
+        reg_table.delete_item(Key={"id": int(to_native(existing[0]["id"]))})
         send_registration_email(request.user, course, "Hủy đăng ký")
         return Response({"detail": "Hủy đăng ký môn học thành công."}, status=status.HTTP_200_OK)
 
@@ -154,23 +274,28 @@ class RegistrationWindowView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        window = RegistrationWindow.get_solo()
-        return Response(RegistrationWindowSerializer(window).data)
+        payload = _window_payload(_get_registration_window_item())
+        return Response(RegistrationWindowSerializer(payload).data)
 
 
 class AdminRegistrationWindowView(APIView):
     permission_classes = [IsStaffUser]
 
     def get(self, request):
-        window = RegistrationWindow.get_solo()
-        return Response(RegistrationWindowSerializer(window).data)
+        payload = _window_payload(_get_registration_window_item())
+        return Response(RegistrationWindowSerializer(payload).data)
 
     def put(self, request):
-        window = RegistrationWindow.get_solo()
-        serializer = RegistrationWindowSerializer(instance=window, data=request.data, partial=True)
+        serializer = RegistrationWindowSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        current = to_native(_get_registration_window_item())
+        for field in ("is_open", "start_at", "end_at"):
+            if field in serializer.validated_data:
+                current[field] = serializer.validated_data[field]
+        current["updated_at"] = datetime.now(timezone.utc).isoformat()
+        table("courses_registrationwindow").put_item(Item={"id": 1, **current})
+        payload = _window_payload(current)
+        return Response(RegistrationWindowSerializer(payload).data)
 
 
 class AdminCpuStressTestView(APIView):

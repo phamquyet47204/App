@@ -1,0 +1,5 @@
+id,username,mssv,email,is_staff,is_superuser,is_active,date_joined,last_login
+1,sv001,20123456,phamquyet472k4@gmail.com,0,0,1,2026-02-24 00:00:00,NULL
+2,admin,00000000,enormitpham@gmail.com,1,1,1,2026-02-24 00:00:00,NULL
+3,loaduser01,26022701,phamquyet04072k4@gmail.com,0,0,1,2026-02-27 05:21:52,NULL
+4,loaduser02,26022702,nuocsuoilaville@gmail.com,0,0,1,2026-02-27 05:21:52,NULL

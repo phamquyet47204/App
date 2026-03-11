@@ -18,7 +18,7 @@ def _load_aws_secrets_into_env():
         return
 
     secret_name = os.getenv("AWS_SECRET_NAME", "")
-    region_name = os.getenv("AWS_REGION", "us-east-1")
+    region_name = os.getenv("AWS_REGION", "ap-southeast-1")
     secrets_required = _str_to_bool(os.getenv("AWS_SECRETS_REQUIRED", "false"))
 
     if not secret_name:
@@ -160,7 +160,7 @@ AUTHENTICATION_BACKENDS = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
+        "accounts.dynamo_auth.DynamoTokenAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

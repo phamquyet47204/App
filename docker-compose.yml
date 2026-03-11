@@ -8,6 +8,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DB_ENGINE: sqlite
+      USE_AWS_SECRETS: "false"
+      DJANGO_SECRET_KEY: "dev-local-secret-key-change-me"
     volumes:
       - ./backend:/app
     networks:

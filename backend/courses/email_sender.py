@@ -5,13 +5,27 @@ from django.conf import settings
 from django.core.mail import send_mail
 
 
+def _value(obj, key, default=""):
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
+def _full_name(user):
+    if isinstance(user, dict):
+        return f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+    if hasattr(user, "get_full_name"):
+        return user.get_full_name()
+    return ""
+
+
 def _build_subject_and_message(user, course, action):
     subject = f"[{settings.EMAIL_SUBJECT_PREFIX}] {action} môn học thành công"
     message = (
-        f"Xin chào {user.get_full_name() or user.username},\n\n"
+        f"Xin chào {_full_name(user) or _value(user, 'username')},\n\n"
         f"Bạn đã {action.lower()} môn học thành công.\n"
-        f"Mã môn: {course.code}\n"
-        f"Tên môn: {course.name}\n\n"
+        f"Mã môn: {_value(course, 'code')}\n"
+        f"Tên môn: {_value(course, 'name')}\n\n"
         "Trân trọng."
     )
     return subject, message
@@ -46,7 +60,7 @@ def _send_via_lambda(to_email, subject, message):
 
 def send_registration_email(user, course, action):
     subject, message = _build_subject_and_message(user, course, action)
-    to_email = user.email
+    to_email = _value(user, "email")
 
     if settings.EMAIL_PROVIDER == "lambda":
         _send_via_lambda(to_email=to_email, subject=subject, message=message)
